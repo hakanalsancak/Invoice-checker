@@ -22,7 +22,7 @@ import { useState } from "react";
 const navItems = [
   {
     title: "Dashboard",
-    href: "/",
+    href: "/dashboard",
     icon: LayoutDashboard,
   },
   {
@@ -54,7 +54,7 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="p-6 border-b border-border/50">
-        <Link href="/" className="flex items-center gap-3" onClick={onNavigate}>
+        <Link href="/dashboard" className="flex items-center gap-3" onClick={onNavigate}>
           <div className="p-2 rounded-lg bg-primary/10">
             <FileCheck className="h-6 w-6 text-primary" />
           </div>
@@ -69,7 +69,7 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
       <nav className="flex-1 p-4 space-y-1">
         {navItems.map((item) => {
           const isActive = pathname === item.href || 
-            (item.href !== "/" && pathname.startsWith(item.href));
+            (item.href !== "/dashboard" && pathname.startsWith(item.href));
           
           return (
             <Link

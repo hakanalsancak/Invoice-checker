@@ -18,7 +18,7 @@ export default async function HomePage() {
 
   // If logged in, redirect to dashboard
   if (session?.user) {
-    redirect("/catalogues");
+    redirect("/dashboard");
   }
 
   return (
