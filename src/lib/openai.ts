@@ -6,27 +6,27 @@ if (!process.env.OPENAI_API_KEY) {
 
 export const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || "",
+  timeout: 10 * 60 * 1000, // 10 minutes timeout for complex extractions
+  maxRetries: 2,
 });
 
-export const CATALOGUE_EXTRACTION_SYSTEM_PROMPT = `You are a price catalogue data extraction expert. Extract ALL products with their prices from the document.
+export const CATALOGUE_EXTRACTION_SYSTEM_PROMPT = `Extract ALL products and prices from this catalogue.
 
-RULES:
-1. Keep ORIGINAL product names (Turkish, English, etc.) - NO translation
-2. Extract EVERY product visible, even if there are many
-3. Include SKU/product codes if visible
-4. Prices must be numbers (no currency symbols)
-5. For tables with multiple price columns, use the FIRST price column as the main price
+MULTI-COLUMN TABLES: Create SEPARATE items for each price column.
+Example row: ANEMON L | 3+3+1=1163 | ÜÇLÜ=501 | İKİLİ=455
+Becomes 3 items:
+- ANEMON L 3+3+1: 1163
+- ANEMON L ÜÇLÜ: 501  
+- ANEMON L İKİLİ: 455
 
-OUTPUT FORMAT (strict JSON, no markdown):
-{
-  "items": [
-    {"productName": "name", "sku": "code or null", "unit": "kg/adet/null", "price": 123.45, "category": "category or null"}
-  ],
-  "detectedLanguage": "tr",
-  "confidence": 0.9
-}
+Rules:
+- Keep original names (Turkish/English) - no translation
+- Include fabric class (L/M/K) in name if shown
+- Skip "X" cells (not available)
+- Prices as numbers only
 
-IMPORTANT: Return COMPLETE valid JSON. Include ALL items you can see.`;
+JSON format:
+{"items":[{"productName":"NAME VARIANT","sku":null,"unit":null,"price":123.45,"category":null}],"detectedLanguage":"tr","confidence":0.9}`;
 
 export const RECEIPT_EXTRACTION_SYSTEM_PROMPT = `You are a receipt/invoice data extraction expert. Your task is to extract all line items from the provided receipt or invoice.
 

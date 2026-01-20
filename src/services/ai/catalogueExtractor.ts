@@ -60,13 +60,13 @@ export async function extractCatalogueFromImage(
           content: [
             {
               type: "text",
-              text: "Extract all product prices from this catalogue image. Focus on extracting: product/model names, prices (as numbers), and any SKU codes you see. Return valid JSON only.",
+              text: "Extract all prices. Multi-column table: create separate item per price column (e.g., 'ANEMON L 3+3+1': 1163, 'ANEMON L ÜÇLÜ': 501). Skip X cells. Return JSON only.",
             },
             {
               type: "image_url",
               image_url: {
                 url: `data:${mimeType};base64,${base64}`,
-                detail: "high", // Use high detail for complex tables
+                detail: "high",
               },
             },
           ],
