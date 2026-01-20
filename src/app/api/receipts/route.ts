@@ -132,6 +132,7 @@ export async function POST(request: NextRequest) {
           receiptDate: extraction.date ? new Date(extraction.date) : (validated.data.receiptDate ? new Date(validated.data.receiptDate) : null),
           totalAmount: extraction.totalAmount,
           language: extraction.detectedLanguage,
+          currency: extraction.detectedCurrency || "USD",
         },
       });
 

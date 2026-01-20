@@ -30,6 +30,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { PageLoading } from "@/components/shared/LoadingStates";
 import { ComparisonReportWithDetails, ComparisonStatus, MatchConfidence } from "@/types";
+import { formatPrice, getCurrencySymbol } from "@/lib/currency";
 
 async function fetchReport(id: string): Promise<ComparisonReportWithDetails> {
   const response = await fetch(`/api/reports/${id}`);
@@ -155,6 +156,19 @@ export default function ReportDetailPage() {
             <span>•</span>
             <span>{format(new Date(report.createdAt), "MMMM d, yyyy")}</span>
           </div>
+          {/* Currency conversion info */}
+          {report.receiptCurrency !== report.catalogueCurrency && (
+            <div className="mt-2 text-sm bg-muted/50 px-3 py-2 rounded-md">
+              <span className="font-medium">Currency Conversion:</span>{" "}
+              Receipt ({getCurrencySymbol(report.receiptCurrency)} {report.receiptCurrency}) → 
+              Catalogue ({getCurrencySymbol(report.catalogueCurrency)} {report.catalogueCurrency})
+              {report.exchangeRate && (
+                <span className="ml-2 text-muted-foreground">
+                  (Rate: 1 {report.receiptCurrency} = {Number(report.exchangeRate).toFixed(4)} {report.catalogueCurrency})
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <Button onClick={handleDownload}>
           <Download className="mr-2 h-4 w-4" />
@@ -191,7 +205,7 @@ export default function ReportDetailPage() {
           <CardContent>
             <div className="flex items-center justify-between">
               <span className="text-2xl font-bold text-destructive">
-                +₺{Number(report.totalOvercharge).toFixed(2)}
+                +{formatPrice(report.totalOvercharge, report.catalogueCurrency)}
               </span>
               <TrendingUp className="h-5 w-5 text-destructive" />
             </div>
@@ -210,7 +224,7 @@ export default function ReportDetailPage() {
           <CardContent>
             <div className="flex items-center justify-between">
               <span className="text-2xl font-bold text-blue-500">
-                -₺{Number(report.totalUndercharge).toFixed(2)}
+                -{formatPrice(report.totalUndercharge, report.catalogueCurrency)}
               </span>
               <TrendingDown className="h-5 w-5 text-blue-500" />
             </div>
@@ -237,7 +251,7 @@ export default function ReportDetailPage() {
                     : ""
                 }`}
               >
-                {netDifference > 0 ? "+" : ""}₺{netDifference.toFixed(2)}
+                {netDifference > 0 ? "+" : ""}{formatPrice(Math.abs(netDifference), report.catalogueCurrency)}
               </span>
               <AlertTriangle
                 className={`h-5 w-5 ${
@@ -286,6 +300,11 @@ export default function ReportDetailPage() {
           <CardTitle>Detailed Comparison</CardTitle>
           <CardDescription>
             Item-by-item price comparison with discrepancies highlighted
+            {report.receiptCurrency !== report.catalogueCurrency && (
+              <span className="block mt-1">
+                Prices converted from {report.receiptCurrency} to {report.catalogueCurrency} for comparison
+              </span>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -297,8 +316,26 @@ export default function ReportDetailPage() {
                   <TableHead>Product (Receipt)</TableHead>
                   <TableHead>Product (Catalogue)</TableHead>
                   <TableHead>Qty</TableHead>
-                  <TableHead>Receipt Price</TableHead>
-                  <TableHead>Catalogue Price</TableHead>
+                  <TableHead>
+                    Receipt Price
+                    <span className="block text-xs text-muted-foreground font-normal">
+                      ({report.receiptCurrency})
+                    </span>
+                  </TableHead>
+                  {report.receiptCurrency !== report.catalogueCurrency && (
+                    <TableHead>
+                      Converted
+                      <span className="block text-xs text-muted-foreground font-normal">
+                        ({report.catalogueCurrency})
+                      </span>
+                    </TableHead>
+                  )}
+                  <TableHead>
+                    Catalogue Price
+                    <span className="block text-xs text-muted-foreground font-normal">
+                      ({report.catalogueCurrency})
+                    </span>
+                  </TableHead>
                   <TableHead>Difference</TableHead>
                   <TableHead>Match</TableHead>
                 </TableRow>
@@ -329,10 +366,19 @@ export default function ReportDetailPage() {
                     <TableCell>
                       {Number(item.receiptItem.quantity)} {item.receiptItem.unit || ""}
                     </TableCell>
-                    <TableCell>₺{Number(item.receiptPrice).toFixed(2)}</TableCell>
+                    <TableCell>
+                      {formatPrice(item.receiptPrice, report.receiptCurrency)}
+                    </TableCell>
+                    {report.receiptCurrency !== report.catalogueCurrency && (
+                      <TableCell className="text-muted-foreground">
+                        {item.receiptPriceConverted
+                          ? formatPrice(item.receiptPriceConverted, report.catalogueCurrency)
+                          : "-"}
+                      </TableCell>
+                    )}
                     <TableCell>
                       {item.cataloguePrice
-                        ? `₺${Number(item.cataloguePrice).toFixed(2)}`
+                        ? formatPrice(item.cataloguePrice, report.catalogueCurrency)
                         : "-"}
                     </TableCell>
                     <TableCell>
@@ -347,7 +393,7 @@ export default function ReportDetailPage() {
                           }
                         >
                           {Number(item.priceDifference) > 0 ? "+" : ""}
-                          ₺{Number(item.priceDifference).toFixed(2)}
+                          {formatPrice(item.priceDifference, report.catalogueCurrency)}
                           {item.percentageDiff !== null && (
                             <span className="text-xs ml-1">
                               ({Number(item.percentageDiff) > 0 ? "+" : ""}

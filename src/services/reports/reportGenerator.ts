@@ -17,12 +17,14 @@ export async function getReportWithDetails(
           supplierName: true,
           originalFileName: true,
           receiptDate: true,
+          currency: true,
         },
       },
       catalogue: {
         select: {
           id: true,
           name: true,
+          currency: true,
         },
       },
       items: {
@@ -57,6 +59,8 @@ export async function getReportWithDetails(
 
   return {
     ...report,
+    receiptCurrency: report.receiptCurrency || report.receipt.currency || "USD",
+    catalogueCurrency: report.catalogueCurrency || report.catalogue.currency || "GBP",
     items: report.items.map(item => ({
       ...item,
       receiptItem: item.receiptItem,
@@ -135,18 +139,24 @@ export function generateReportSummary(report: ComparisonReportWithDetails) {
 
 // Export report data as CSV
 export function exportReportToCSV(report: ComparisonReportWithDetails): string {
+  const receiptCurrency = report.receiptCurrency || "USD";
+  const catalogueCurrency = report.catalogueCurrency || "GBP";
+  const hasDifferentCurrencies = receiptCurrency !== catalogueCurrency;
+
   const headers = [
     "Product Name (Receipt)",
     "Product Name (Catalogue)",
     "SKU",
     "Quantity",
     "Unit",
-    "Receipt Price",
-    "Catalogue Price",
-    "Difference",
+    `Receipt Price (${receiptCurrency})`,
+    ...(hasDifferentCurrencies ? [`Converted Price (${catalogueCurrency})`] : []),
+    `Catalogue Price (${catalogueCurrency})`,
+    `Difference (${catalogueCurrency})`,
     "% Difference",
     "Status",
     "Match Confidence",
+    ...(hasDifferentCurrencies ? ["Exchange Rate"] : []),
   ];
 
   const rows = report.items.map(item => [
@@ -156,14 +166,23 @@ export function exportReportToCSV(report: ComparisonReportWithDetails): string {
     String(item.receiptItem.quantity),
     item.receiptItem.unit || "N/A",
     String(item.receiptPrice),
+    ...(hasDifferentCurrencies ? [item.receiptPriceConverted !== null ? String(item.receiptPriceConverted) : "N/A"] : []),
     item.cataloguePrice !== null ? String(item.cataloguePrice) : "N/A",
     item.priceDifference !== null ? String(item.priceDifference) : "N/A",
     item.percentageDiff !== null ? `${item.percentageDiff}%` : "N/A",
     item.status,
     item.matchConfidence,
+    ...(hasDifferentCurrencies ? [item.exchangeRate !== null ? String(item.exchangeRate) : "N/A"] : []),
   ]);
 
   const csvContent = [
+    // Add metadata header
+    `# Report ID: ${report.id}`,
+    `# Created: ${report.createdAt}`,
+    `# Receipt Currency: ${receiptCurrency}`,
+    `# Catalogue Currency: ${catalogueCurrency}`,
+    ...(report.exchangeRate ? [`# Exchange Rate: 1 ${receiptCurrency} = ${report.exchangeRate} ${catalogueCurrency}`] : []),
+    "",
     headers.join(","),
     ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")),
   ].join("\n");

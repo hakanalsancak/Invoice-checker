@@ -35,27 +35,29 @@ IMPORTANT RULES:
 1. Preserve ORIGINAL product names in their language - DO NOT translate
 2. Extract the supplier name if visible
 3. Extract the receipt/invoice date if visible
-4. For each line item, extract:
+4. DETECT THE CURRENCY from the document (look for $, £, €, ₺ or currency codes like USD, GBP, EUR, TRY)
+5. For each line item, extract:
    - Line number (order of appearance)
    - Product name (exactly as written)
    - Raw text (the complete original line text)
    - Quantity
-   - Unit (kg, adet, etc.)
-   - Unit price
+   - Unit (kg, adet, SET, PCS, etc.)
+   - Unit price (as number, no currency symbol)
    - Total price for that line
-5. Calculate or extract the grand total
+6. Calculate or extract the grand total
 
 Return a valid JSON object with this exact structure:
 {
   "supplier": "supplier/vendor name or null",
   "date": "YYYY-MM-DD format or null",
+  "detectedCurrency": "USD or GBP or EUR or TRY",
   "items": [
     {
       "lineNumber": 1,
       "productName": "original product name",
       "rawText": "complete original line text",
       "quantity": 10,
-      "unit": "kg or adet or null",
+      "unit": "kg or adet or SET or PCS or null",
       "unitPrice": 45.50,
       "totalPrice": 455.00
     }

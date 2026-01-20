@@ -45,6 +45,7 @@ export interface ReceiptExtractionResult {
   items: ExtractedReceiptItem[];
   totalAmount: number;
   detectedLanguage: string;
+  detectedCurrency?: string; // ISO currency code (USD, GBP, EUR, TRY, etc.)
 }
 
 // Product matching result from AI
@@ -103,6 +104,7 @@ export interface ReceiptWithItems {
   receiptDate: Date | null;
   totalAmount: number | PrismaDecimal | null;
   language: string;
+  currency: string; // ISO currency code
   status: ProcessingStatus;
   createdAt: Date;
   items: ReceiptItemDisplay[];
@@ -134,16 +136,21 @@ export interface ComparisonReportWithDetails {
   mismatches: number;
   totalOvercharge: number | PrismaDecimal;
   totalUndercharge: number | PrismaDecimal;
+  receiptCurrency: string; // Currency of the receipt
+  catalogueCurrency: string; // Currency of the catalogue
+  exchangeRate: number | PrismaDecimal | null; // Exchange rate used
   createdAt: Date;
   receipt: {
     id: string;
     supplierName: string | null;
     originalFileName: string;
     receiptDate: Date | null;
+    currency: string;
   };
   catalogue: {
     id: string;
     name: string;
+    currency: string;
   };
   items: ComparisonItemDisplay[];
 }
@@ -151,10 +158,12 @@ export interface ComparisonReportWithDetails {
 // Comparison item for display
 export interface ComparisonItemDisplay {
   id: string;
-  receiptPrice: number | PrismaDecimal;
-  cataloguePrice: number | PrismaDecimal | null;
-  priceDifference: number | PrismaDecimal | null;
+  receiptPrice: number | PrismaDecimal; // Original price in receipt currency
+  receiptPriceConverted: number | PrismaDecimal | null; // Converted to catalogue currency
+  cataloguePrice: number | PrismaDecimal | null; // Price in catalogue currency
+  priceDifference: number | PrismaDecimal | null; // Difference after conversion
   percentageDiff: number | PrismaDecimal | null;
+  exchangeRate: number | PrismaDecimal | null; // Exchange rate used
   matchConfidence: MatchConfidence;
   status: ComparisonStatus;
   receiptItem: {

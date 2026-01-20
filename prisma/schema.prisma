@@ -88,6 +88,7 @@ model Receipt {
   receiptDate      DateTime?
   totalAmount      Decimal?         @db.Decimal(12, 2)
   language         String           @default("tr")
+  currency         String           @default("USD") // ISO currency code
   status           ProcessingStatus @default(PENDING)
   createdAt        DateTime         @default(now())
   
@@ -116,15 +117,18 @@ model ReceiptItem {
 }
 
 model ComparisonReport {
-  id              String   @id @default(cuid())
-  receiptId       String
-  catalogueId     String
-  totalItems      Int
-  matchedItems    Int
-  mismatches      Int
-  totalOvercharge Decimal  @db.Decimal(12, 2) @default(0)
-  totalUndercharge Decimal @db.Decimal(12, 2) @default(0)
-  createdAt       DateTime @default(now())
+  id               String   @id @default(cuid())
+  receiptId        String
+  catalogueId      String
+  totalItems       Int
+  matchedItems     Int
+  mismatches       Int
+  totalOvercharge  Decimal  @db.Decimal(12, 2) @default(0)
+  totalUndercharge Decimal  @db.Decimal(12, 2) @default(0)
+  receiptCurrency  String   @default("USD") // Currency of the receipt
+  catalogueCurrency String  @default("GBP") // Currency of the catalogue
+  exchangeRate     Decimal? @db.Decimal(10, 6) // Exchange rate used for comparison
+  createdAt        DateTime @default(now())
   
   receipt         Receipt  @relation(fields: [receiptId], references: [id], onDelete: Cascade)
   catalogue       Catalogue @relation(fields: [catalogueId], references: [id], onDelete: Cascade)
@@ -135,16 +139,18 @@ model ComparisonReport {
 }
 
 model ComparisonItem {
-  id              String           @id @default(cuid())
-  reportId        String
-  receiptItemId   String
-  catalogueItemId String?
-  receiptPrice    Decimal          @db.Decimal(12, 2)
-  cataloguePrice  Decimal?         @db.Decimal(12, 2)
-  priceDifference Decimal?         @db.Decimal(12, 2)
-  percentageDiff  Decimal?         @db.Decimal(8, 2)
-  matchConfidence MatchConfidence  @default(UNMATCHED)
-  status          ComparisonStatus @default(UNMATCHED)
+  id                    String           @id @default(cuid())
+  reportId              String
+  receiptItemId         String
+  catalogueItemId       String?
+  receiptPrice          Decimal          @db.Decimal(12, 2) // Original price in receipt currency
+  receiptPriceConverted Decimal?         @db.Decimal(12, 2) // Converted to catalogue currency
+  cataloguePrice        Decimal?         @db.Decimal(12, 2) // Price in catalogue currency
+  priceDifference       Decimal?         @db.Decimal(12, 2) // Difference after conversion
+  percentageDiff        Decimal?         @db.Decimal(8, 2)
+  exchangeRate          Decimal?         @db.Decimal(10, 6) // Exchange rate used
+  matchConfidence       MatchConfidence  @default(UNMATCHED)
+  status                ComparisonStatus @default(UNMATCHED)
   
   report          ComparisonReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
   receiptItem     ReceiptItem      @relation(fields: [receiptItemId], references: [id], onDelete: Cascade)

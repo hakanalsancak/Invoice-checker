@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 export const createReceiptSchema = z.object({
-  supplierName: z.string().optional(),
-  receiptDate: z.string().optional(),
-  language: z.string().default("tr"),
+  supplierName: z.string().nullish().transform(val => val || undefined),
+  receiptDate: z.string().nullish().transform(val => val || undefined),
+  language: z.string().nullish().transform(val => val || "tr"),
 });
 
 export const verifyReceiptSchema = z.object({

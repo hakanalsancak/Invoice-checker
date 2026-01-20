@@ -43,6 +43,7 @@ export async function extractReceiptFromText(text: string): Promise<ReceiptExtra
       items: itemsWithLineNumbers,
       totalAmount: result.totalAmount || itemsWithLineNumbers.reduce((sum, item) => sum + item.totalPrice, 0),
       detectedLanguage: result.detectedLanguage || "tr",
+      detectedCurrency: result.detectedCurrency || "USD",
     };
   } catch (error) {
     console.error("Receipt extraction error:", error);
@@ -57,6 +58,8 @@ export async function extractReceiptFromImage(
   mimeType: string
 ): Promise<ReceiptExtractionResult> {
   try {
+    console.log("Starting receipt image extraction with GPT-4o...");
+    
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
@@ -66,33 +69,93 @@ export async function extractReceiptFromImage(
           content: [
             {
               type: "text",
-              text: "Extract all line items from this receipt/invoice image:",
+              text: "Extract all line items from this receipt/invoice image. Return valid JSON only.",
             },
             {
               type: "image_url",
               image_url: {
                 url: `data:${mimeType};base64,${base64}`,
+                detail: "high",
               },
             },
           ],
         },
       ],
       temperature: 0.1,
-      max_tokens: 4096,
+      max_tokens: 16000, // Increased for large receipts
     });
 
     const content = response.choices[0]?.message?.content;
+    console.log("OpenAI response received, length:", content?.length);
+    
     if (!content) {
       throw new Error("No response from OpenAI");
     }
 
-    // Extract JSON from the response
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("No valid JSON in response");
+    // Try to extract JSON from the response
+    let jsonContent = content;
+    
+    // If wrapped in markdown code blocks, extract the JSON
+    const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch) {
+      jsonContent = jsonMatch[1].trim();
+    } else {
+      // Try to find raw JSON object
+      const rawJsonMatch = content.match(/\{[\s\S]*\}/);
+      if (rawJsonMatch) {
+        jsonContent = rawJsonMatch[0];
+      }
     }
 
-    const result = JSON.parse(jsonMatch[0]) as ReceiptExtractionResult;
+    // Try to parse JSON, with recovery for truncated responses
+    let result: ReceiptExtractionResult;
+    try {
+      result = JSON.parse(jsonContent) as ReceiptExtractionResult;
+    } catch (parseError) {
+      console.log("JSON parse failed, attempting recovery...");
+      
+      // Try to fix truncated JSON by closing arrays/objects
+      let fixedJson = jsonContent;
+      
+      // Count open brackets and close them
+      const openBrackets = (fixedJson.match(/\[/g) || []).length;
+      const closeBrackets = (fixedJson.match(/\]/g) || []).length;
+      const openBraces = (fixedJson.match(/\{/g) || []).length;
+      const closeBraces = (fixedJson.match(/\}/g) || []).length;
+      
+      // Remove any trailing incomplete item
+      fixedJson = fixedJson.replace(/,\s*\{[^}]*$/, '');
+      fixedJson = fixedJson.replace(/,\s*"[^"]*$/, '');
+      
+      // Close arrays and objects
+      for (let i = 0; i < openBrackets - closeBrackets; i++) {
+        fixedJson += ']';
+      }
+      for (let i = 0; i < openBraces - closeBraces; i++) {
+        fixedJson += '}';
+      }
+      
+      try {
+        result = JSON.parse(fixedJson) as ReceiptExtractionResult;
+        console.log("JSON recovery successful!");
+      } catch (secondError) {
+        console.error("JSON recovery failed:", secondError);
+        // Return empty result instead of throwing
+        return {
+          supplier: null,
+          date: null,
+          items: [],
+          totalAmount: 0,
+          detectedLanguage: "en",
+          detectedCurrency: "USD",
+        };
+      }
+    }
+
+    // Ensure items array exists
+    if (!result.items || !Array.isArray(result.items)) {
+      result.items = [];
+    }
     
     const validItems = result.items.filter(
       (item): item is ExtractedReceiptItem =>
@@ -108,12 +171,15 @@ export async function extractReceiptFromImage(
       lineNumber: item.lineNumber || index + 1,
     }));
 
+    console.log(`Extracted ${itemsWithLineNumbers.length} valid receipt items, currency: ${result.detectedCurrency || "USD"}`);
+
     return {
       supplier: result.supplier || null,
       date: result.date || null,
       items: itemsWithLineNumbers,
       totalAmount: result.totalAmount || itemsWithLineNumbers.reduce((sum, item) => sum + item.totalPrice, 0),
-      detectedLanguage: result.detectedLanguage || "tr",
+      detectedLanguage: result.detectedLanguage || "en",
+      detectedCurrency: result.detectedCurrency || "USD",
     };
   } catch (error) {
     console.error("Receipt image extraction error:", error);
