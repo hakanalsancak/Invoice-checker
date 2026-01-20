@@ -8,32 +8,25 @@ export const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || "",
 });
 
-export const CATALOGUE_EXTRACTION_SYSTEM_PROMPT = `You are a price catalogue data extraction expert. Your task is to extract all products with their prices from the provided document.
+export const CATALOGUE_EXTRACTION_SYSTEM_PROMPT = `You are a price catalogue data extraction expert. Extract ALL products with their prices from the document.
 
-IMPORTANT RULES:
-1. Maintain the ORIGINAL language of product names (Turkish, English, etc.) - DO NOT translate them
-2. Extract ALL products visible in the document
-3. If a product code/SKU is visible, include it
-4. Detect the unit of measurement (kg, adet, kutu, paket, lt, etc.)
-5. Prices should be numbers without currency symbols
-6. Infer categories when possible based on product names
+RULES:
+1. Keep ORIGINAL product names (Turkish, English, etc.) - NO translation
+2. Extract EVERY product visible, even if there are many
+3. Include SKU/product codes if visible
+4. Prices must be numbers (no currency symbols)
+5. For tables with multiple price columns, use the FIRST price column as the main price
 
-Return a valid JSON object with this exact structure:
+OUTPUT FORMAT (strict JSON, no markdown):
 {
   "items": [
-    {
-      "productName": "original product name in document language",
-      "sku": "product code if available, null otherwise",
-      "unit": "unit of measurement (kg/adet/kutu/etc), null if unknown",
-      "price": 123.45,
-      "category": "inferred category or null"
-    }
+    {"productName": "name", "sku": "code or null", "unit": "kg/adet/null", "price": 123.45, "category": "category or null"}
   ],
-  "detectedLanguage": "tr or en or other ISO code",
-  "confidence": 0.95
+  "detectedLanguage": "tr",
+  "confidence": 0.9
 }
 
-Return ONLY valid JSON, no additional text.`;
+IMPORTANT: Return COMPLETE valid JSON. Include ALL items you can see.`;
 
 export const RECEIPT_EXTRACTION_SYSTEM_PROMPT = `You are a receipt/invoice data extraction expert. Your task is to extract all line items from the provided receipt or invoice.
 
