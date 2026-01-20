@@ -41,6 +41,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { PageLoading } from "@/components/shared/LoadingStates";
 import { CatalogueWithItems, CatalogueItemDisplay } from "@/types";
+import { formatPrice, getCurrencySymbol } from "@/lib/currency";
 
 async function fetchCatalogue(id: string): Promise<CatalogueWithItems> {
   const response = await fetch(`/api/catalogues/${id}`);
@@ -237,7 +238,7 @@ export default function CatalogueDetailPage() {
           <p className="text-muted-foreground mt-1">{catalogue.originalFileName}</p>
           <p className="text-sm text-muted-foreground">
             Created on {format(new Date(catalogue.createdAt), "MMMM d, yyyy")} • 
-            {" "}{catalogue.items.length} items • Language: {catalogue.language.toUpperCase()}
+            {" "}{catalogue.items.length} items • Language: {catalogue.language.toUpperCase()} • Currency: {getCurrencySymbol(catalogue.currency)} ({catalogue.currency})
           </p>
         </div>
         <Dialog open={isAddingItem} onOpenChange={setIsAddingItem}>
@@ -443,7 +444,7 @@ export default function CatalogueDetailPage() {
                           <TableCell className="text-muted-foreground">
                             {item.sku || "-"}
                           </TableCell>
-                          <TableCell>₺{Number(item.price).toFixed(2)}</TableCell>
+                          <TableCell>{formatPrice(item.price, catalogue.currency)}</TableCell>
                           <TableCell className="text-muted-foreground">
                             {item.unit || "-"}
                           </TableCell>

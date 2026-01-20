@@ -3,9 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum ProcessingStatus {
@@ -49,6 +48,7 @@ model Catalogue {
   originalFileName String
   fileUrl          String?
   language         String           @default("tr")
+  currency         String           @default("GBP") // ISO currency code
   status           ProcessingStatus @default(PENDING)
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt

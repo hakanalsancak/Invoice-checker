@@ -124,6 +124,7 @@ export async function POST(request: NextRequest) {
         data: {
           status: "COMPLETED",
           language: extraction.detectedLanguage,
+          currency: extraction.detectedCurrency || "GBP",
         },
       });
 

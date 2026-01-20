@@ -23,6 +23,7 @@ export interface ExtractedCatalogueItem {
 export interface CatalogueExtractionResult {
   items: ExtractedCatalogueItem[];
   detectedLanguage: string;
+  detectedCurrency?: string; // ISO currency code (GBP, USD, EUR, TRY, etc.)
   confidence: number;
 }
 
@@ -68,6 +69,7 @@ export interface CatalogueWithItems {
   originalFileName: string;
   fileUrl: string | null;
   language: string;
+  currency: string; // ISO currency code (GBP, USD, EUR, TRY, etc.)
   status: ProcessingStatus;
   createdAt: Date;
   updatedAt: Date;

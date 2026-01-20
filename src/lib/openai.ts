@@ -24,9 +24,10 @@ Rules:
 - Include fabric class (L/M/K) in name if shown
 - Skip "X" cells (not available)
 - Prices as numbers only
+- IMPORTANT: Detect ACTUAL currency from the document (£, $, €, ₺, etc.) - DO NOT assume based on language!
 
 JSON format:
-{"items":[{"productName":"NAME VARIANT","sku":null,"unit":null,"price":123.45,"category":null}],"detectedLanguage":"tr","confidence":0.9}`;
+{"items":[{"productName":"NAME VARIANT","sku":null,"unit":null,"price":123.45,"category":null}],"detectedLanguage":"tr","detectedCurrency":"GBP","confidence":0.9}`;
 
 export const RECEIPT_EXTRACTION_SYSTEM_PROMPT = `You are a receipt/invoice data extraction expert. Your task is to extract all line items from the provided receipt or invoice.
 

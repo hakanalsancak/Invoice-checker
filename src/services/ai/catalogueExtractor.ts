@@ -34,6 +34,7 @@ export async function extractCatalogueFromText(text: string): Promise<CatalogueE
     return {
       items: validItems,
       detectedLanguage: result.detectedLanguage || "tr",
+      detectedCurrency: result.detectedCurrency || "GBP",
       confidence: result.confidence || 0.8,
     };
   } catch (error) {
@@ -135,6 +136,7 @@ export async function extractCatalogueFromImage(
         return {
           items: [],
           detectedLanguage: "tr",
+          detectedCurrency: "GBP",
           confidence: 0,
         };
       }
@@ -153,11 +155,12 @@ export async function extractCatalogueFromImage(
         item.price > 0
     );
 
-    console.log(`Extracted ${validItems.length} valid items`);
+    console.log(`Extracted ${validItems.length} valid items, currency: ${result.detectedCurrency || "GBP"}`);
 
     return {
       items: validItems,
       detectedLanguage: result.detectedLanguage || "tr",
+      detectedCurrency: result.detectedCurrency || "GBP",
       confidence: result.confidence || 0.8,
     };
   } catch (error) {
