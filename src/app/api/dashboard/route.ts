@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { DashboardStats, ActivityItem } from "@/types";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     
@@ -114,8 +114,9 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Dashboard error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { success: false, error: "Failed to fetch dashboard data" },
+      { success: false, error: `Failed to fetch dashboard data: ${errorMessage}` },
       { status: 500 }
     );
   }
