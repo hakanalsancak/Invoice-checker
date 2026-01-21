@@ -60,6 +60,31 @@ export async function extractReceiptFromImage(
   try {
     console.log("Starting receipt image extraction with GPT-4o...");
     
+    // Detailed user prompt for maximum accuracy
+    const userPrompt = `IMPORTANT: This invoice extraction requires 100% ACCURACY. Read CAREFULLY.
+
+STEP 1: Count the TOTAL number of product rows in the table (rows with Quantity, Product Name, Price).
+STEP 2: Extract EACH row one by one - do NOT skip any.
+STEP 3: For each row, read the EXACT values:
+   - Quantity: the number in the first column
+   - Unit: SET, PCS, etc.
+   - Product Name: copy EXACTLY as written
+   - Unit Price: read the EXACT number from "Unit price ($)" column
+   - Total: read the EXACT number from "Total ($)" column
+
+ACCURACY CHECK:
+- Your item count MUST match the number of product rows
+- Prices must be copied EXACTLY as shown (e.g., 1,067.00 → 1067.00)
+- Do NOT calculate - just read what's printed
+
+Look for:
+- Currency symbols in headers ($ means USD)
+- Company name at top
+- Invoice date
+- Sub Total at bottom
+
+Return complete JSON with ALL items. If there are 56 product rows, return 56 items.`;
+
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
@@ -69,20 +94,20 @@ export async function extractReceiptFromImage(
           content: [
             {
               type: "text",
-              text: "Extract all line items from this receipt/invoice image. Return valid JSON only.",
+              text: userPrompt,
             },
             {
               type: "image_url",
               image_url: {
                 url: `data:${mimeType};base64,${base64}`,
-                detail: "high",
+                detail: "high", // Maximum detail for accurate reading
               },
             },
           ],
         },
       ],
-      temperature: 0.1,
-      max_tokens: 16000, // Increased for large receipts
+      temperature: 0, // Zero temperature for maximum consistency/accuracy
+      max_tokens: 16000,
     });
 
     const content = response.choices[0]?.message?.content;

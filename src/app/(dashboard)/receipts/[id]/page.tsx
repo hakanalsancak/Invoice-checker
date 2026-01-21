@@ -4,11 +4,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, FileCheck, Loader2, Pencil } from "lucide-react";
+import { ArrowLeft, FileCheck, Loader2, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -26,6 +27,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -36,7 +38,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { PageLoading } from "@/components/shared/LoadingStates";
-import { ReceiptWithItems } from "@/types";
+import { ReceiptWithItems, ReceiptItemDisplay } from "@/types";
 import { formatPrice, getCurrencySymbol } from "@/lib/currency";
 
 const CURRENCIES = [
@@ -50,6 +52,15 @@ interface Catalogue {
   id: string;
   name: string;
   _count: { items: number };
+}
+
+interface EditingItem {
+  id: string;
+  productName: string;
+  quantity: string;
+  unit: string;
+  unitPrice: string;
+  totalPrice: string;
 }
 
 async function fetchReceipt(id: string): Promise<ReceiptWithItems> {
@@ -88,6 +99,36 @@ async function updateReceiptCurrency(receiptId: string, currency: string) {
   return data.data;
 }
 
+async function updateItem(receiptId: string, itemId: string, data: Partial<ReceiptItemDisplay>) {
+  const response = await fetch(`/api/receipts/${receiptId}/items`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ itemId, ...data }),
+  });
+  const result = await response.json();
+  if (!result.success) throw new Error(result.error);
+  return result.data;
+}
+
+async function deleteItem(receiptId: string, itemId: string) {
+  const response = await fetch(`/api/receipts/${receiptId}/items?itemId=${itemId}`, {
+    method: "DELETE",
+  });
+  const result = await response.json();
+  if (!result.success) throw new Error(result.error);
+}
+
+async function createItem(receiptId: string, data: { productName: string; quantity: number; unit?: string; unitPrice: number; totalPrice: number }) {
+  const response = await fetch(`/api/receipts/${receiptId}/items`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  const result = await response.json();
+  if (!result.success) throw new Error(result.error);
+  return result.data;
+}
+
 function StatusBadge({ status }: { status: string }) {
   const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
     PENDING: { variant: "secondary", label: "Pending" },
@@ -111,6 +152,15 @@ export default function ReceiptDetailPage() {
   const [selectedCatalogue, setSelectedCatalogue] = useState<string>("");
   const [currencyDialogOpen, setCurrencyDialogOpen] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState<string>("");
+  const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
+  const [isAddingItem, setIsAddingItem] = useState(false);
+  const [newItem, setNewItem] = useState({
+    productName: "",
+    quantity: "1",
+    unit: "",
+    unitPrice: "",
+    totalPrice: "",
+  });
 
   useEffect(() => {
     if (showVerify) {
@@ -151,6 +201,44 @@ export default function ReceiptDetailPage() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({ itemId, data }: { itemId: string; data: Partial<ReceiptItemDisplay> }) =>
+      updateItem(receiptId, itemId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["receipt", receiptId] });
+      setEditingItem(null);
+      toast.success("Item updated successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to update item");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (itemId: string) => deleteItem(receiptId, itemId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["receipt", receiptId] });
+      toast.success("Item deleted successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete item");
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: { productName: string; quantity: number; unit?: string; unitPrice: number; totalPrice: number }) =>
+      createItem(receiptId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["receipt", receiptId] });
+      setIsAddingItem(false);
+      setNewItem({ productName: "", quantity: "1", unit: "", unitPrice: "", totalPrice: "" });
+      toast.success("Item added successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to add item");
+    },
+  });
+
   const openCurrencyDialog = () => {
     setSelectedCurrency(receipt?.currency || "USD");
     setCurrencyDialogOpen(true);
@@ -181,6 +269,78 @@ export default function ReceiptDetailPage() {
       return;
     }
     verifyMutation.mutate();
+  };
+
+  const handleEditClick = (item: ReceiptItemDisplay) => {
+    setEditingItem({
+      id: item.id,
+      productName: item.productName,
+      quantity: String(item.quantity),
+      unit: item.unit || "",
+      unitPrice: String(item.unitPrice),
+      totalPrice: String(item.totalPrice),
+    });
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingItem) return;
+    updateMutation.mutate({
+      itemId: editingItem.id,
+      data: {
+        productName: editingItem.productName,
+        quantity: parseFloat(editingItem.quantity),
+        unit: editingItem.unit || null,
+        unitPrice: parseFloat(editingItem.unitPrice),
+        totalPrice: parseFloat(editingItem.totalPrice),
+      },
+    });
+  };
+
+  const handleAddItem = () => {
+    if (!newItem.productName || !newItem.unitPrice) {
+      toast.error("Product name and unit price are required");
+      return;
+    }
+    const qty = parseFloat(newItem.quantity) || 1;
+    const unitPrice = parseFloat(newItem.unitPrice) || 0;
+    const totalPrice = newItem.totalPrice ? parseFloat(newItem.totalPrice) : qty * unitPrice;
+    
+    createMutation.mutate({
+      productName: newItem.productName,
+      quantity: qty,
+      unit: newItem.unit || undefined,
+      unitPrice: unitPrice,
+      totalPrice: totalPrice,
+    });
+  };
+
+  // Auto-calculate total when quantity or unit price changes in edit mode
+  const handleEditFieldChange = (field: keyof EditingItem, value: string) => {
+    if (!editingItem) return;
+    
+    const updated = { ...editingItem, [field]: value };
+    
+    // Auto-calculate total price
+    if (field === "quantity" || field === "unitPrice") {
+      const qty = parseFloat(updated.quantity) || 0;
+      const price = parseFloat(updated.unitPrice) || 0;
+      updated.totalPrice = (qty * price).toFixed(2);
+    }
+    
+    setEditingItem(updated);
+  };
+
+  // Auto-calculate for new item
+  const handleNewItemChange = (field: string, value: string) => {
+    const updated = { ...newItem, [field]: value };
+    
+    if (field === "quantity" || field === "unitPrice") {
+      const qty = parseFloat(updated.quantity) || 0;
+      const price = parseFloat(updated.unitPrice) || 0;
+      updated.totalPrice = (qty * price).toFixed(2);
+    }
+    
+    setNewItem(updated);
   };
 
   return (
@@ -227,12 +387,93 @@ export default function ReceiptDetailPage() {
             </button>
           </div>
         </div>
-        {receipt.status === "COMPLETED" && (
-          <Button onClick={() => setVerifyDialogOpen(true)}>
-            <FileCheck className="mr-2 h-4 w-4" />
-            Verify Prices
-          </Button>
-        )}
+        <div className="flex gap-2">
+          <Dialog open={isAddingItem} onOpenChange={setIsAddingItem}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Item
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Item</DialogTitle>
+                <DialogDescription>
+                  Add a missing item to this receipt
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Product Name *</Label>
+                  <Input
+                    value={newItem.productName}
+                    onChange={(e) => handleNewItemChange("productName", e.target.value)}
+                    placeholder="Enter product name"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Quantity *</Label>
+                    <Input
+                      type="number"
+                      value={newItem.quantity}
+                      onChange={(e) => handleNewItemChange("quantity", e.target.value)}
+                      placeholder="1"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Unit</Label>
+                    <Input
+                      value={newItem.unit}
+                      onChange={(e) => handleNewItemChange("unit", e.target.value)}
+                      placeholder="SET, PCS, etc."
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Unit Price *</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={newItem.unitPrice}
+                      onChange={(e) => handleNewItemChange("unitPrice", e.target.value)}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Total Price</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={newItem.totalPrice}
+                      onChange={(e) => setNewItem({ ...newItem, totalPrice: e.target.value })}
+                      placeholder="Auto-calculated"
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsAddingItem(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleAddItem} disabled={createMutation.isPending}>
+                  {createMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Add Item"
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          {receipt.status === "COMPLETED" && (
+            <Button onClick={() => setVerifyDialogOpen(true)}>
+              <FileCheck className="mr-2 h-4 w-4" />
+              Verify Prices
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Items table */}
@@ -240,42 +481,140 @@ export default function ReceiptDetailPage() {
         <CardHeader>
           <CardTitle>Receipt Items</CardTitle>
           <CardDescription>
-            All items extracted from this receipt
+            All items extracted from this receipt. Click the pencil icon to edit any item.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-lg border">
+          <div className="rounded-lg border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12">#</TableHead>
                   <TableHead>Product Name</TableHead>
-                  <TableHead>Quantity</TableHead>
-                  <TableHead>Unit Price</TableHead>
-                  <TableHead>Total</TableHead>
+                  <TableHead className="w-24">Quantity</TableHead>
+                  <TableHead className="w-28">Unit Price</TableHead>
+                  <TableHead className="w-28">Total</TableHead>
+                  <TableHead className="w-20">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {receipt.items.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                       No items found in this receipt
                     </TableCell>
                   </TableRow>
                 ) : (
                   receipt.items.map((item) => (
                     <TableRow key={item.id}>
-                      <TableCell className="text-muted-foreground">
-                        {item.lineNumber}
-                      </TableCell>
-                      <TableCell className="font-medium">{item.productName}</TableCell>
-                      <TableCell>
-                        {Number(item.quantity)} {item.unit || ""}
-                      </TableCell>
-                      <TableCell>{formatPrice(item.unitPrice, receipt.currency || "USD")}</TableCell>
-                      <TableCell className="font-medium">
-                        {formatPrice(item.totalPrice, receipt.currency || "USD")}
-                      </TableCell>
+                      {editingItem?.id === item.id ? (
+                        <>
+                          <TableCell className="text-muted-foreground">
+                            {item.lineNumber}
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              value={editingItem.productName}
+                              onChange={(e) => handleEditFieldChange("productName", e.target.value)}
+                              className="h-8"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Input
+                                type="number"
+                                value={editingItem.quantity}
+                                onChange={(e) => handleEditFieldChange("quantity", e.target.value)}
+                                className="h-8 w-16"
+                              />
+                              <Input
+                                value={editingItem.unit}
+                                onChange={(e) => handleEditFieldChange("unit", e.target.value)}
+                                className="h-8 w-14"
+                                placeholder="unit"
+                              />
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={editingItem.unitPrice}
+                              onChange={(e) => handleEditFieldChange("unitPrice", e.target.value)}
+                              className="h-8 w-24"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={editingItem.totalPrice}
+                              onChange={(e) => handleEditFieldChange("totalPrice", e.target.value)}
+                              className="h-8 w-24"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={handleSaveEdit}
+                                disabled={updateMutation.isPending}
+                              >
+                                {updateMutation.isPending ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Save className="h-4 w-4 text-green-600" />
+                                )}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => setEditingItem(null)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </>
+                      ) : (
+                        <>
+                          <TableCell className="text-muted-foreground">
+                            {item.lineNumber}
+                          </TableCell>
+                          <TableCell className="font-medium">{item.productName}</TableCell>
+                          <TableCell>
+                            {Number(item.quantity)} {item.unit || ""}
+                          </TableCell>
+                          <TableCell>{formatPrice(item.unitPrice, receipt.currency || "USD")}</TableCell>
+                          <TableCell className="font-medium">
+                            {formatPrice(item.totalPrice, receipt.currency || "USD")}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handleEditClick(item)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive"
+                                onClick={() => deleteMutation.mutate(item.id)}
+                                disabled={deleteMutation.isPending}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </>
+                      )}
                     </TableRow>
                   ))
                 )}
