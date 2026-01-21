@@ -7,6 +7,7 @@ const createReceiptSchema = z.object({
   supplierName: z.string().min(1, "Supplier name is required"),
   receiptDate: z.string().optional(),
   currency: z.string().default("USD"),
+  catalogueIds: z.array(z.string()).min(1, "At least one catalogue is required"),
 });
 
 export async function GET() {
@@ -25,6 +26,13 @@ export async function GET() {
       include: {
         _count: {
           select: { items: true },
+        },
+        catalogues: {
+          include: {
+            catalogue: {
+              select: { id: true, name: true, currency: true },
+            },
+          },
         },
       },
       orderBy: { createdAt: "desc" },
@@ -65,7 +73,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create receipt record
+    // Verify user owns all selected catalogues
+    const catalogues = await db.catalogue.findMany({
+      where: {
+        id: { in: validated.data.catalogueIds },
+        userId: session.user.id,
+      },
+    });
+
+    if (catalogues.length !== validated.data.catalogueIds.length) {
+      return NextResponse.json(
+        { success: false, error: "One or more catalogues not found" },
+        { status: 400 }
+      );
+    }
+
+    // Create receipt with catalogue links
     const receipt = await db.receipt.create({
       data: {
         userId: session.user.id,
@@ -74,10 +97,22 @@ export async function POST(request: NextRequest) {
         receiptDate: validated.data.receiptDate ? new Date(validated.data.receiptDate) : null,
         language: "en",
         currency: validated.data.currency,
-        status: "COMPLETED", // Already complete since it's manual entry
+        status: "COMPLETED",
+        catalogues: {
+          create: validated.data.catalogueIds.map(catalogueId => ({
+            catalogueId,
+          })),
+        },
       },
       include: {
         _count: { select: { items: true } },
+        catalogues: {
+          include: {
+            catalogue: {
+              select: { id: true, name: true, currency: true },
+            },
+          },
+        },
       },
     });
 

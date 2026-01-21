@@ -25,6 +25,26 @@ export async function GET(
       include: {
         items: {
           orderBy: { lineNumber: "asc" },
+          include: {
+            catalogueItem: {
+              select: {
+                id: true,
+                productName: true,
+                price: true,
+              },
+            },
+          },
+        },
+        catalogues: {
+          include: {
+            catalogue: {
+              select: {
+                id: true,
+                name: true,
+                currency: true,
+              },
+            },
+          },
         },
         _count: {
           select: { items: true },

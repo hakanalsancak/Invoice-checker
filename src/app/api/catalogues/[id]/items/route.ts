@@ -94,7 +94,9 @@ export async function POST(
     const item = await db.catalogueItem.create({
       data: {
         catalogueId: id,
-        ...validated.data,
+        productName: validated.data.productName,
+        price: validated.data.price,
+        category: validated.data.description || null, // Store description in category field
       },
     });
 

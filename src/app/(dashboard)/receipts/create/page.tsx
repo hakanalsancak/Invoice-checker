@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { ArrowLeft, Loader2, Check, X } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -18,6 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const CURRENCIES = [
   { code: "USD", symbol: "$", name: "US Dollar" },
@@ -26,10 +28,25 @@ const CURRENCIES = [
   { code: "TRY", symbol: "₺", name: "Turkish Lira" },
 ];
 
+interface Catalogue {
+  id: string;
+  name: string;
+  currency: string;
+  _count: { items: number };
+}
+
 interface CreateData {
   supplierName: string;
   receiptDate?: string;
   currency: string;
+  catalogueIds: string[];
+}
+
+async function fetchCatalogues(): Promise<Catalogue[]> {
+  const response = await fetch("/api/catalogues");
+  const data = await response.json();
+  if (!data.success) throw new Error(data.error);
+  return data.data.filter((c: { status: string }) => c.status === "COMPLETED");
 }
 
 async function createReceipt(data: CreateData) {
@@ -49,11 +66,17 @@ export default function CreateReceiptPage() {
   const [supplierName, setSupplierName] = useState("");
   const [receiptDate, setReceiptDate] = useState("");
   const [currency, setCurrency] = useState("USD");
+  const [selectedCatalogues, setSelectedCatalogues] = useState<string[]>([]);
+
+  const { data: catalogues, isLoading: cataloguesLoading } = useQuery({
+    queryKey: ["catalogues"],
+    queryFn: fetchCatalogues,
+  });
 
   const createMutation = useMutation({
     mutationFn: createReceipt,
     onSuccess: (data) => {
-      toast.success("Receipt created! Now add your items.");
+      toast.success("Receipt created! Now add your items from the catalogue.");
       router.push(`/receipts/${data.id}`);
     },
     onError: (error: Error) => {
@@ -61,8 +84,21 @@ export default function CreateReceiptPage() {
     },
   });
 
+  const handleCatalogueToggle = (catalogueId: string) => {
+    setSelectedCatalogues(prev => 
+      prev.includes(catalogueId)
+        ? prev.filter(id => id !== catalogueId)
+        : [...prev, catalogueId]
+    );
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (selectedCatalogues.length === 0) {
+      toast.error("Please select at least one catalogue");
+      return;
+    }
 
     if (!supplierName.trim()) {
       toast.error("Please enter a supplier name");
@@ -73,8 +109,13 @@ export default function CreateReceiptPage() {
       supplierName: supplierName.trim(),
       receiptDate: receiptDate || undefined,
       currency,
+      catalogueIds: selectedCatalogues,
     });
   };
+
+  const selectedCatalogueNames = catalogues
+    ?.filter(c => selectedCatalogues.includes(c.id))
+    .map(c => c.name) || [];
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -90,7 +131,7 @@ export default function CreateReceiptPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Create Receipt</h1>
         <p className="text-muted-foreground">
-          Create a new receipt or invoice to verify prices against your catalogues
+          Create a new receipt to verify prices against your catalogues
         </p>
       </div>
 
@@ -99,11 +140,70 @@ export default function CreateReceiptPage() {
         <CardHeader>
           <CardTitle>Receipt Details</CardTitle>
           <CardDescription>
-            Enter the basic details for your receipt. You&apos;ll be able to add line items after creating it.
+            First, select which catalogue(s) this receipt will be compared against.
+            Then you&apos;ll be able to add items from those catalogues.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Catalogue Selection */}
+            <div className="space-y-3">
+              <Label>Select Catalogue(s) *</Label>
+              <p className="text-sm text-muted-foreground">
+                Choose the catalogue(s) containing the products on this receipt
+              </p>
+              
+              {cataloguesLoading ? (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading catalogues...
+                </div>
+              ) : catalogues && catalogues.length > 0 ? (
+                <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-3">
+                  {catalogues.map((catalogue) => (
+                    <div
+                      key={catalogue.id}
+                      className={`flex items-center gap-3 p-2 rounded-md cursor-pointer hover:bg-accent transition-colors ${
+                        selectedCatalogues.includes(catalogue.id) ? "bg-accent" : ""
+                      }`}
+                      onClick={() => handleCatalogueToggle(catalogue.id)}
+                    >
+                      <Checkbox
+                        checked={selectedCatalogues.includes(catalogue.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        onCheckedChange={() => handleCatalogueToggle(catalogue.id)}
+                      />
+                      <div className="flex-1">
+                        <p className="font-medium">{catalogue.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {catalogue._count.items} items • {catalogue.currency}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 border rounded-lg">
+                  <p className="text-muted-foreground mb-2">No catalogues available</p>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/catalogues/create">Create a Catalogue First</Link>
+                  </Button>
+                </div>
+              )}
+
+              {/* Selected catalogues display */}
+              {selectedCatalogueNames.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {selectedCatalogueNames.map((name, i) => (
+                    <Badge key={i} variant="secondary" className="gap-1">
+                      <Check className="h-3 w-3" />
+                      {name}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Supplier name */}
             <div className="space-y-2">
               <Label htmlFor="supplierName">Supplier Name *</Label>
@@ -113,7 +213,6 @@ export default function CreateReceiptPage() {
                 value={supplierName}
                 onChange={(e) => setSupplierName(e.target.value)}
                 disabled={createMutation.isPending}
-                autoFocus
               />
               <p className="text-sm text-muted-foreground">
                 The name of the supplier/vendor on the invoice
@@ -130,14 +229,11 @@ export default function CreateReceiptPage() {
                 onChange={(e) => setReceiptDate(e.target.value)}
                 disabled={createMutation.isPending}
               />
-              <p className="text-sm text-muted-foreground">
-                The date on the invoice/receipt
-              </p>
             </div>
 
             {/* Currency */}
             <div className="space-y-2">
-              <Label htmlFor="currency">Currency *</Label>
+              <Label htmlFor="currency">Receipt Currency *</Label>
               <Select
                 value={currency}
                 onValueChange={setCurrency}
@@ -163,7 +259,7 @@ export default function CreateReceiptPage() {
             <div className="flex gap-4">
               <Button
                 type="submit"
-                disabled={!supplierName.trim() || createMutation.isPending}
+                disabled={selectedCatalogues.length === 0 || !supplierName.trim() || createMutation.isPending}
                 className="flex-1"
               >
                 {createMutation.isPending ? (
@@ -188,16 +284,16 @@ export default function CreateReceiptPage() {
         </CardContent>
       </Card>
 
-      {/* Next steps info */}
+      {/* Info */}
       <Card className="bg-muted/50">
         <CardHeader>
-          <CardTitle className="text-lg">Next Steps</CardTitle>
+          <CardTitle className="text-lg">How It Works</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>1. Create the receipt with supplier name and currency</p>
-          <p>2. Add line items manually (product, quantity, price)</p>
-          <p>3. Click &quot;Verify Prices&quot; to compare against a catalogue</p>
-          <p>4. Get instant price verification report</p>
+          <p>1. <strong>Select catalogue(s)</strong> - Choose which price list(s) to compare against</p>
+          <p>2. <strong>Create receipt</strong> - Enter supplier name and currency</p>
+          <p>3. <strong>Add items</strong> - Pick products from your selected catalogues</p>
+          <p>4. <strong>Verify</strong> - Compare receipt prices against catalogue prices</p>
         </CardContent>
       </Card>
     </div>

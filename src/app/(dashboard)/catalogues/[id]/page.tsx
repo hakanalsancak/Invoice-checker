@@ -83,7 +83,7 @@ async function deleteItem(catalogueId: string, itemId: string) {
   if (!result.success) throw new Error(result.error);
 }
 
-async function createItem(catalogueId: string, data: { productName: string; price: number; sku?: string; unit?: string; category?: string }) {
+async function createItem(catalogueId: string, data: { productName: string; price: number; description?: string }) {
   const response = await fetch(`/api/catalogues/${catalogueId}/items`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -120,9 +120,7 @@ interface EditingItem {
   id: string;
   productName: string;
   price: string;
-  sku: string;
-  unit: string;
-  category: string;
+  description: string;
 }
 
 export default function CatalogueDetailPage() {
@@ -139,9 +137,7 @@ export default function CatalogueDetailPage() {
   const [newItem, setNewItem] = useState({
     productName: "",
     price: "",
-    sku: "",
-    unit: "",
-    category: "",
+    description: "",
   });
 
   const { data: catalogue, isLoading, error } = useQuery({
@@ -174,12 +170,12 @@ export default function CatalogueDetailPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: { productName: string; price: number; sku?: string; unit?: string; category?: string }) =>
+    mutationFn: (data: { productName: string; price: number; description?: string }) =>
       createItem(catalogueId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["catalogue", catalogueId] });
       setIsAddingItem(false);
-      setNewItem({ productName: "", price: "", sku: "", unit: "", category: "" });
+      setNewItem({ productName: "", price: "", description: "" });
       toast.success("Item added successfully");
     },
     onError: (error: Error) => {
@@ -225,7 +221,6 @@ export default function CatalogueDetailPage() {
 
   const filteredItems = catalogue.items.filter((item) =>
     item.productName.toLowerCase().includes(search.toLowerCase()) ||
-    item.sku?.toLowerCase().includes(search.toLowerCase()) ||
     item.category?.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -234,9 +229,7 @@ export default function CatalogueDetailPage() {
       id: item.id,
       productName: item.productName,
       price: String(item.price),
-      sku: item.sku || "",
-      unit: item.unit || "",
-      category: item.category || "",
+      description: item.category || "", // Using category field as description
     });
   };
 
@@ -247,9 +240,7 @@ export default function CatalogueDetailPage() {
       data: {
         productName: editingItem.productName,
         price: parseFloat(editingItem.price),
-        sku: editingItem.sku || null,
-        unit: editingItem.unit || null,
-        category: editingItem.category || null,
+        category: editingItem.description || null, // Store description in category field
       },
     });
   };
@@ -262,9 +253,7 @@ export default function CatalogueDetailPage() {
     createMutation.mutate({
       productName: newItem.productName,
       price: parseFloat(newItem.price),
-      sku: newItem.sku || undefined,
-      unit: newItem.unit || undefined,
-      category: newItem.category || undefined,
+      description: newItem.description || undefined,
     });
   };
 
@@ -285,13 +274,10 @@ export default function CatalogueDetailPage() {
             <h1 className="text-3xl font-bold tracking-tight">{catalogue.name}</h1>
             <StatusBadge status={catalogue.status} />
           </div>
-          <p className="text-muted-foreground mt-1">{catalogue.originalFileName}</p>
-          <div className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground mt-2">
             <span>Created on {format(new Date(catalogue.createdAt), "MMMM d, yyyy")}</span>
             <span>•</span>
             <span>{catalogue.items.length} items</span>
-            <span>•</span>
-            <span>Language: {catalogue.language.toUpperCase()}</span>
             <span>•</span>
             <button 
               onClick={openCurrencyDialog}
@@ -322,46 +308,26 @@ export default function CatalogueDetailPage() {
                 <Input
                   value={newItem.productName}
                   onChange={(e) => setNewItem({ ...newItem, productName: e.target.value })}
-                  placeholder="Enter product name"
+                  placeholder="e.g., ALORA 3+3+B"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Price *</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={newItem.price}
-                    onChange={(e) => setNewItem({ ...newItem, price: e.target.value })}
-                    placeholder="0.00"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>SKU</Label>
-                  <Input
-                    value={newItem.sku}
-                    onChange={(e) => setNewItem({ ...newItem, sku: e.target.value })}
-                    placeholder="Optional"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label>Price *</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={newItem.price}
+                  onChange={(e) => setNewItem({ ...newItem, price: e.target.value })}
+                  placeholder="0.00"
+                />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Unit</Label>
-                  <Input
-                    value={newItem.unit}
-                    onChange={(e) => setNewItem({ ...newItem, unit: e.target.value })}
-                    placeholder="kg, adet, etc."
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Category</Label>
-                  <Input
-                    value={newItem.category}
-                    onChange={(e) => setNewItem({ ...newItem, category: e.target.value })}
-                    placeholder="Optional"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label>Description / Notes</Label>
+                <Input
+                  value={newItem.description}
+                  onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
+                  placeholder="Optional - any additional info (size, type, etc.)"
+                />
               </div>
             </div>
             <DialogFooter>
@@ -407,18 +373,16 @@ export default function CatalogueDetailPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Product Name</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead>Unit</TableHead>
-                  <TableHead>Category</TableHead>
+                  <TableHead className="w-32">Price</TableHead>
+                  <TableHead>Description</TableHead>
                   <TableHead className="w-24">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredItems.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                      {search ? "No items match your search" : "No items in this catalogue"}
+                    <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                      {search ? "No items match your search" : "No items in this catalogue. Click 'Add Item' to get started."}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -437,40 +401,23 @@ export default function CatalogueDetailPage() {
                           </TableCell>
                           <TableCell>
                             <Input
-                              value={editingItem.sku}
-                              onChange={(e) =>
-                                setEditingItem({ ...editingItem, sku: e.target.value })
-                              }
-                              className="h-8"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
                               type="number"
                               step="0.01"
                               value={editingItem.price}
                               onChange={(e) =>
                                 setEditingItem({ ...editingItem, price: e.target.value })
                               }
-                              className="h-8 w-24"
+                              className="h-8 w-28"
                             />
                           </TableCell>
                           <TableCell>
                             <Input
-                              value={editingItem.unit}
+                              value={editingItem.description}
                               onChange={(e) =>
-                                setEditingItem({ ...editingItem, unit: e.target.value })
-                              }
-                              className="h-8 w-20"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              value={editingItem.category}
-                              onChange={(e) =>
-                                setEditingItem({ ...editingItem, category: e.target.value })
+                                setEditingItem({ ...editingItem, description: e.target.value })
                               }
                               className="h-8"
+                              placeholder="Optional"
                             />
                           </TableCell>
                           <TableCell>
@@ -502,13 +449,7 @@ export default function CatalogueDetailPage() {
                       ) : (
                         <>
                           <TableCell className="font-medium">{item.productName}</TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {item.sku || "-"}
-                          </TableCell>
                           <TableCell>{formatPrice(item.price, catalogue.currency)}</TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {item.unit || "-"}
-                          </TableCell>
                           <TableCell className="text-muted-foreground">
                             {item.category || "-"}
                           </TableCell>

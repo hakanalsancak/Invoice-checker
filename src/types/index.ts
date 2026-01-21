@@ -117,6 +117,7 @@ export interface ReceiptWithItems {
 export interface ReceiptItemDisplay {
   id: string;
   receiptId: string;
+  catalogueItemId: string | null;
   productName: string;
   rawText: string | null;
   quantity: number | PrismaDecimal;
@@ -124,6 +125,11 @@ export interface ReceiptItemDisplay {
   unitPrice: number | PrismaDecimal;
   totalPrice: number | PrismaDecimal;
   lineNumber: number;
+  catalogueItem?: {
+    id: string;
+    productName: string;
+    price: number | PrismaDecimal;
+  } | null;
 }
 
 // Comparison report with details

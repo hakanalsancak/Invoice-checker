@@ -13,6 +13,7 @@ const updateItemSchema = z.object({
 });
 
 const createItemSchema = z.object({
+  catalogueItemId: z.string().min(1, "Catalogue item is required"),
   productName: z.string().min(1, "Product name is required"),
   quantity: z.number().positive("Quantity must be positive"),
   unit: z.string().nullable().optional(),
@@ -36,10 +37,13 @@ export async function POST(
       );
     }
 
-    // Verify ownership
+    // Verify ownership and get linked catalogues
     const receipt = await db.receipt.findFirst({
       where: { id: receiptId, userId: session.user.id },
-      include: { items: { orderBy: { lineNumber: "desc" }, take: 1 } },
+      include: { 
+        items: { orderBy: { lineNumber: "desc" }, take: 1 },
+        catalogues: { select: { catalogueId: true } },
+      },
     });
 
     if (!receipt) {
@@ -59,12 +63,29 @@ export async function POST(
       );
     }
 
+    // Verify the catalogue item belongs to a linked catalogue
+    const linkedCatalogueIds = receipt.catalogues.map(c => c.catalogueId);
+    const catalogueItem = await db.catalogueItem.findFirst({
+      where: {
+        id: validated.data.catalogueItemId,
+        catalogueId: { in: linkedCatalogueIds },
+      },
+    });
+
+    if (!catalogueItem) {
+      return NextResponse.json(
+        { success: false, error: "Product must be from a linked catalogue" },
+        { status: 400 }
+      );
+    }
+
     // Get next line number
     const nextLineNumber = (receipt.items[0]?.lineNumber || 0) + 1;
 
     const item = await db.receiptItem.create({
       data: {
         receiptId,
+        catalogueItemId: validated.data.catalogueItemId,
         productName: validated.data.productName,
         quantity: validated.data.quantity,
         unit: validated.data.unit || null,

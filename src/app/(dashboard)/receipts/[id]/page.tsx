@@ -2,9 +2,9 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { ArrowLeft, FileCheck, Loader2, Pencil, Plus, Save, Trash2, X } from "lucide-react";
+import { ArrowLeft, FileCheck, Loader2, Pencil, Plus, Save, Trash2, X, Search, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -36,6 +36,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { PageLoading } from "@/components/shared/LoadingStates";
 import { ReceiptWithItems, ReceiptItemDisplay } from "@/types";
@@ -48,41 +61,47 @@ const CURRENCIES = [
   { code: "TRY", symbol: "₺", name: "Turkish Lira" },
 ];
 
-interface Catalogue {
+interface CatalogueItem {
+  id: string;
+  productName: string;
+  price: number;
+  category: string | null;
+  catalogueId: string;
+  catalogueName: string;
+  catalogueCurrency: string;
+}
+
+interface LinkedCatalogue {
   id: string;
   name: string;
-  _count: { items: number };
+  currency: string;
+}
+
+interface ReceiptWithCatalogues extends ReceiptWithItems {
+  catalogues?: Array<{
+    catalogue: LinkedCatalogue;
+  }>;
 }
 
 interface EditingItem {
   id: string;
   productName: string;
   quantity: string;
-  unit: string;
   unitPrice: string;
   totalPrice: string;
 }
 
-async function fetchReceipt(id: string): Promise<ReceiptWithItems> {
+async function fetchReceipt(id: string): Promise<ReceiptWithCatalogues> {
   const response = await fetch(`/api/receipts/${id}`);
   const data = await response.json();
   if (!data.success) throw new Error(data.error);
   return data.data;
 }
 
-async function fetchCatalogues(): Promise<Catalogue[]> {
-  const response = await fetch("/api/catalogues");
-  const data = await response.json();
-  if (!data.success) throw new Error(data.error);
-  return data.data.filter((c: { status: string }) => c.status === "COMPLETED");
-}
-
-async function verifyReceipt(receiptId: string, catalogueId: string) {
-  const response = await fetch(`/api/receipts/${receiptId}/verify`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ catalogueId }),
-  });
+async function fetchCatalogueItems(catalogueIds: string[]): Promise<CatalogueItem[]> {
+  if (catalogueIds.length === 0) return [];
+  
+  const response = await fetch(`/api/receipts/catalogue-items?ids=${catalogueIds.join(",")}`);
   const data = await response.json();
   if (!data.success) throw new Error(data.error);
   return data.data;
@@ -118,7 +137,13 @@ async function deleteItem(receiptId: string, itemId: string) {
   if (!result.success) throw new Error(result.error);
 }
 
-async function createItem(receiptId: string, data: { productName: string; quantity: number; unit?: string; unitPrice: number; totalPrice: number }) {
+async function createItem(receiptId: string, data: { 
+  catalogueItemId: string;
+  productName: string; 
+  quantity: number; 
+  unitPrice: number; 
+  totalPrice: number;
+}) {
   const response = await fetch(`/api/receipts/${receiptId}/items`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -127,6 +152,16 @@ async function createItem(receiptId: string, data: { productName: string; quanti
   const result = await response.json();
   if (!result.success) throw new Error(result.error);
   return result.data;
+}
+
+async function verifyReceipt(receiptId: string) {
+  const response = await fetch(`/api/receipts/${receiptId}/verify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+  const data = await response.json();
+  if (!data.success) throw new Error(data.error);
+  return data.data;
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -148,23 +183,18 @@ export default function ReceiptDetailPage() {
   const receiptId = params.id as string;
   const showVerify = searchParams.get("verify") === "true";
 
-  const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
-  const [selectedCatalogue, setSelectedCatalogue] = useState<string>("");
   const [currencyDialogOpen, setCurrencyDialogOpen] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState<string>("");
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
   const [isAddingItem, setIsAddingItem] = useState(false);
-  const [newItem, setNewItem] = useState({
-    productName: "",
-    quantity: "1",
-    unit: "",
-    unitPrice: "",
-    totalPrice: "",
-  });
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<CatalogueItem | null>(null);
+  const [newItemQuantity, setNewItemQuantity] = useState("1");
+  const [newItemPrice, setNewItemPrice] = useState("");
 
   useEffect(() => {
     if (showVerify) {
-      setVerifyDialogOpen(true);
+      // Auto-start verification if verify=true in URL
     }
   }, [showVerify]);
 
@@ -173,20 +203,16 @@ export default function ReceiptDetailPage() {
     queryFn: () => fetchReceipt(receiptId),
   });
 
-  const { data: catalogues } = useQuery({
-    queryKey: ["catalogues"],
-    queryFn: fetchCatalogues,
-  });
+  // Get linked catalogue IDs
+  const linkedCatalogueIds = useMemo(() => {
+    return receipt?.catalogues?.map(c => c.catalogue.id) || [];
+  }, [receipt?.catalogues]);
 
-  const verifyMutation = useMutation({
-    mutationFn: () => verifyReceipt(receiptId, selectedCatalogue),
-    onSuccess: (data) => {
-      toast.success("Price verification completed!");
-      router.push(`/reports/${data.reportId}`);
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to verify prices");
-    },
+  // Fetch items from linked catalogues
+  const { data: catalogueItems } = useQuery({
+    queryKey: ["catalogueItems", linkedCatalogueIds],
+    queryFn: () => fetchCatalogueItems(linkedCatalogueIds),
+    enabled: linkedCatalogueIds.length > 0,
   });
 
   const currencyMutation = useMutation({
@@ -226,16 +252,29 @@ export default function ReceiptDetailPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: { productName: string; quantity: number; unit?: string; unitPrice: number; totalPrice: number }) =>
+    mutationFn: (data: { catalogueItemId: string; productName: string; quantity: number; unitPrice: number; totalPrice: number }) =>
       createItem(receiptId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["receipt", receiptId] });
       setIsAddingItem(false);
-      setNewItem({ productName: "", quantity: "1", unit: "", unitPrice: "", totalPrice: "" });
+      setSelectedProduct(null);
+      setNewItemQuantity("1");
+      setNewItemPrice("");
       toast.success("Item added successfully");
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to add item");
+    },
+  });
+
+  const verifyMutation = useMutation({
+    mutationFn: () => verifyReceipt(receiptId),
+    onSuccess: (data) => {
+      toast.success("Price verification completed!");
+      router.push(`/reports/${data.reportId}`);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to verify prices");
     },
   });
 
@@ -263,20 +302,11 @@ export default function ReceiptDetailPage() {
     );
   }
 
-  const handleVerify = () => {
-    if (!selectedCatalogue) {
-      toast.error("Please select a catalogue to compare against");
-      return;
-    }
-    verifyMutation.mutate();
-  };
-
   const handleEditClick = (item: ReceiptItemDisplay) => {
     setEditingItem({
       id: item.id,
       productName: item.productName,
       quantity: String(item.quantity),
-      unit: item.unit || "",
       unitPrice: String(item.unitPrice),
       totalPrice: String(item.totalPrice),
     });
@@ -284,43 +314,52 @@ export default function ReceiptDetailPage() {
 
   const handleSaveEdit = () => {
     if (!editingItem) return;
+    const qty = parseFloat(editingItem.quantity) || 1;
+    const price = parseFloat(editingItem.unitPrice) || 0;
     updateMutation.mutate({
       itemId: editingItem.id,
       data: {
-        productName: editingItem.productName,
-        quantity: parseFloat(editingItem.quantity),
-        unit: editingItem.unit || null,
-        unitPrice: parseFloat(editingItem.unitPrice),
-        totalPrice: parseFloat(editingItem.totalPrice),
+        quantity: qty,
+        unitPrice: price,
+        totalPrice: qty * price,
       },
     });
   };
 
+  const handleProductSelect = (product: CatalogueItem) => {
+    setSelectedProduct(product);
+    setProductPickerOpen(false);
+    // Don't auto-fill price - user enters the receipt price
+  };
+
   const handleAddItem = () => {
-    if (!newItem.productName || !newItem.unitPrice) {
-      toast.error("Product name and unit price are required");
+    if (!selectedProduct) {
+      toast.error("Please select a product");
       return;
     }
-    const qty = parseFloat(newItem.quantity) || 1;
-    const unitPrice = parseFloat(newItem.unitPrice) || 0;
-    const totalPrice = newItem.totalPrice ? parseFloat(newItem.totalPrice) : qty * unitPrice;
-    
+    if (!newItemPrice) {
+      toast.error("Please enter the receipt price");
+      return;
+    }
+
+    const qty = parseFloat(newItemQuantity) || 1;
+    const price = parseFloat(newItemPrice) || 0;
+
     createMutation.mutate({
-      productName: newItem.productName,
+      catalogueItemId: selectedProduct.id,
+      productName: selectedProduct.productName,
       quantity: qty,
-      unit: newItem.unit || undefined,
-      unitPrice: unitPrice,
-      totalPrice: totalPrice,
+      unitPrice: price,
+      totalPrice: qty * price,
     });
   };
 
-  // Auto-calculate total when quantity or unit price changes in edit mode
+  // Auto-calculate total when quantity or price changes
   const handleEditFieldChange = (field: keyof EditingItem, value: string) => {
     if (!editingItem) return;
     
     const updated = { ...editingItem, [field]: value };
     
-    // Auto-calculate total price
     if (field === "quantity" || field === "unitPrice") {
       const qty = parseFloat(updated.quantity) || 0;
       const price = parseFloat(updated.unitPrice) || 0;
@@ -330,18 +369,7 @@ export default function ReceiptDetailPage() {
     setEditingItem(updated);
   };
 
-  // Auto-calculate for new item
-  const handleNewItemChange = (field: string, value: string) => {
-    const updated = { ...newItem, [field]: value };
-    
-    if (field === "quantity" || field === "unitPrice") {
-      const qty = parseFloat(updated.quantity) || 0;
-      const price = parseFloat(updated.unitPrice) || 0;
-      updated.totalPrice = (qty * price).toFixed(2);
-    }
-    
-    setNewItem(updated);
-  };
+  const linkedCatalogues = receipt.catalogues?.map(c => c.catalogue) || [];
 
   return (
     <div className="space-y-6">
@@ -362,8 +390,7 @@ export default function ReceiptDetailPage() {
             </h1>
             <StatusBadge status={receipt.status} />
           </div>
-          <p className="text-muted-foreground mt-1">{receipt.originalFileName}</p>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mt-2">
             <span>
               {receipt.receiptDate
                 ? format(new Date(receipt.receiptDate), "MMMM d, yyyy")
@@ -386,6 +413,15 @@ export default function ReceiptDetailPage() {
               <Pencil className="h-3 w-3" />
             </button>
           </div>
+          {/* Linked catalogues */}
+          {linkedCatalogues.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              <span className="text-sm text-muted-foreground">Linked to:</span>
+              {linkedCatalogues.map(cat => (
+                <Badge key={cat.id} variant="outline">{cat.name}</Badge>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex gap-2">
           <Dialog open={isAddingItem} onOpenChange={setIsAddingItem}>
@@ -395,69 +431,134 @@ export default function ReceiptDetailPage() {
                 Add Item
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Add New Item</DialogTitle>
+                <DialogTitle>Add Receipt Item</DialogTitle>
                 <DialogDescription>
-                  Add a missing item to this receipt
+                  Select a product from your linked catalogues and enter the receipt price
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
+                {/* Product Picker */}
                 <div className="space-y-2">
-                  <Label>Product Name *</Label>
+                  <Label>Product *</Label>
+                  <Popover open={productPickerOpen} onOpenChange={setProductPickerOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={productPickerOpen}
+                        className="w-full justify-between h-auto min-h-10 py-2"
+                      >
+                        {selectedProduct ? (
+                          <div className="text-left">
+                            <div className="font-medium">{selectedProduct.productName}</div>
+                            <div className="text-xs text-muted-foreground">
+                              Catalogue price: {formatPrice(selectedProduct.price, selectedProduct.catalogueCurrency)}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">Select a product...</span>
+                        )}
+                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[400px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search products..." />
+                        <CommandList className="max-h-64">
+                          <CommandEmpty>No products found.</CommandEmpty>
+                          {linkedCatalogues.map(catalogue => (
+                            <CommandGroup key={catalogue.id} heading={catalogue.name}>
+                              {catalogueItems
+                                ?.filter(item => item.catalogueId === catalogue.id)
+                                .map(item => (
+                                  <CommandItem
+                                    key={item.id}
+                                    value={item.productName}
+                                    onSelect={() => handleProductSelect(item)}
+                                    className="cursor-pointer"
+                                  >
+                                    <div className="flex-1">
+                                      <div>{item.productName}</div>
+                                      <div className="text-xs text-muted-foreground">
+                                        {formatPrice(item.price, item.catalogueCurrency)}
+                                        {item.category && ` • ${item.category}`}
+                                      </div>
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                            </CommandGroup>
+                          ))}
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Show catalogue price for reference */}
+                {selectedProduct && (
+                  <div className="p-3 bg-muted/50 rounded-lg text-sm">
+                    <div className="font-medium">Catalogue Price (for reference):</div>
+                    <div className="text-lg font-bold text-primary">
+                      {formatPrice(selectedProduct.price, selectedProduct.catalogueCurrency)}
+                    </div>
+                  </div>
+                )}
+
+                {/* Quantity */}
+                <div className="space-y-2">
+                  <Label>Quantity *</Label>
                   <Input
-                    value={newItem.productName}
-                    onChange={(e) => handleNewItemChange("productName", e.target.value)}
-                    placeholder="Enter product name"
+                    type="number"
+                    min="1"
+                    value={newItemQuantity}
+                    onChange={(e) => setNewItemQuantity(e.target.value)}
+                    placeholder="1"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Quantity *</Label>
-                    <Input
-                      type="number"
-                      value={newItem.quantity}
-                      onChange={(e) => handleNewItemChange("quantity", e.target.value)}
-                      placeholder="1"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Unit</Label>
-                    <Input
-                      value={newItem.unit}
-                      onChange={(e) => handleNewItemChange("unit", e.target.value)}
-                      placeholder="SET, PCS, etc."
-                    />
-                  </div>
+
+                {/* Receipt Price */}
+                <div className="space-y-2">
+                  <Label>Receipt Price (per unit) *</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={newItemPrice}
+                    onChange={(e) => setNewItemPrice(e.target.value)}
+                    placeholder="Enter the price from the receipt"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Enter the unit price shown on your receipt/invoice
+                  </p>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Unit Price *</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={newItem.unitPrice}
-                      onChange={(e) => handleNewItemChange("unitPrice", e.target.value)}
-                      placeholder="0.00"
-                    />
+
+                {/* Total preview */}
+                {newItemPrice && (
+                  <div className="p-3 bg-accent/50 rounded-lg">
+                    <div className="text-sm text-muted-foreground">Line Total:</div>
+                    <div className="text-lg font-bold">
+                      {formatPrice(
+                        (parseFloat(newItemQuantity) || 1) * (parseFloat(newItemPrice) || 0),
+                        receipt.currency || "USD"
+                      )}
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Total Price</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={newItem.totalPrice}
-                      onChange={(e) => setNewItem({ ...newItem, totalPrice: e.target.value })}
-                      placeholder="Auto-calculated"
-                    />
-                  </div>
-                </div>
+                )}
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddingItem(false)}>
+                <Button variant="outline" onClick={() => {
+                  setIsAddingItem(false);
+                  setSelectedProduct(null);
+                  setNewItemQuantity("1");
+                  setNewItemPrice("");
+                }}>
                   Cancel
                 </Button>
-                <Button onClick={handleAddItem} disabled={createMutation.isPending}>
+                <Button 
+                  onClick={handleAddItem} 
+                  disabled={!selectedProduct || !newItemPrice || createMutation.isPending}
+                >
                   {createMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
@@ -467,10 +568,19 @@ export default function ReceiptDetailPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-          {receipt.status === "COMPLETED" && (
-            <Button onClick={() => setVerifyDialogOpen(true)}>
-              <FileCheck className="mr-2 h-4 w-4" />
-              Verify Prices
+          {receipt.status === "COMPLETED" && receipt.items.length > 0 && (
+            <Button onClick={() => verifyMutation.mutate()} disabled={verifyMutation.isPending}>
+              {verifyMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                <>
+                  <FileCheck className="mr-2 h-4 w-4" />
+                  Verify Prices
+                </>
+              )}
             </Button>
           )}
         </div>
@@ -481,7 +591,7 @@ export default function ReceiptDetailPage() {
         <CardHeader>
           <CardTitle>Receipt Items</CardTitle>
           <CardDescription>
-            All items extracted from this receipt. Click the pencil icon to edit any item.
+            Items from this receipt - click edit to adjust quantity or price
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -492,8 +602,8 @@ export default function ReceiptDetailPage() {
                   <TableHead className="w-12">#</TableHead>
                   <TableHead>Product Name</TableHead>
                   <TableHead className="w-24">Quantity</TableHead>
-                  <TableHead className="w-28">Unit Price</TableHead>
-                  <TableHead className="w-28">Total</TableHead>
+                  <TableHead className="w-32">Unit Price</TableHead>
+                  <TableHead className="w-32">Total</TableHead>
                   <TableHead className="w-20">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -501,39 +611,24 @@ export default function ReceiptDetailPage() {
                 {receipt.items.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                      No items found in this receipt
+                      No items yet. Click &quot;Add Item&quot; to add products from your catalogues.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  receipt.items.map((item) => (
+                  receipt.items.map((item, index) => (
                     <TableRow key={item.id}>
                       {editingItem?.id === item.id ? (
                         <>
-                          <TableCell className="text-muted-foreground">
-                            {item.lineNumber}
-                          </TableCell>
+                          <TableCell className="text-muted-foreground">{index + 1}</TableCell>
+                          <TableCell className="font-medium">{item.productName}</TableCell>
                           <TableCell>
                             <Input
-                              value={editingItem.productName}
-                              onChange={(e) => handleEditFieldChange("productName", e.target.value)}
-                              className="h-8"
+                              type="number"
+                              min="1"
+                              value={editingItem.quantity}
+                              onChange={(e) => handleEditFieldChange("quantity", e.target.value)}
+                              className="h-8 w-20"
                             />
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
-                              <Input
-                                type="number"
-                                value={editingItem.quantity}
-                                onChange={(e) => handleEditFieldChange("quantity", e.target.value)}
-                                className="h-8 w-16"
-                              />
-                              <Input
-                                value={editingItem.unit}
-                                onChange={(e) => handleEditFieldChange("unit", e.target.value)}
-                                className="h-8 w-14"
-                                placeholder="unit"
-                              />
-                            </div>
                           </TableCell>
                           <TableCell>
                             <Input
@@ -541,17 +636,11 @@ export default function ReceiptDetailPage() {
                               step="0.01"
                               value={editingItem.unitPrice}
                               onChange={(e) => handleEditFieldChange("unitPrice", e.target.value)}
-                              className="h-8 w-24"
+                              className="h-8 w-28"
                             />
                           </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={editingItem.totalPrice}
-                              onChange={(e) => handleEditFieldChange("totalPrice", e.target.value)}
-                              className="h-8 w-24"
-                            />
+                          <TableCell className="font-medium">
+                            {formatPrice(parseFloat(editingItem.totalPrice) || 0, receipt.currency || "USD")}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
@@ -581,13 +670,9 @@ export default function ReceiptDetailPage() {
                         </>
                       ) : (
                         <>
-                          <TableCell className="text-muted-foreground">
-                            {item.lineNumber}
-                          </TableCell>
+                          <TableCell className="text-muted-foreground">{index + 1}</TableCell>
                           <TableCell className="font-medium">{item.productName}</TableCell>
-                          <TableCell>
-                            {Number(item.quantity)} {item.unit || ""}
-                          </TableCell>
+                          <TableCell>{Number(item.quantity)}</TableCell>
                           <TableCell>{formatPrice(item.unitPrice, receipt.currency || "USD")}</TableCell>
                           <TableCell className="font-medium">
                             {formatPrice(item.totalPrice, receipt.currency || "USD")}
@@ -623,7 +708,7 @@ export default function ReceiptDetailPage() {
           </div>
           
           {/* Total row */}
-          {receipt.totalAmount && (
+          {receipt.totalAmount && Number(receipt.totalAmount) > 0 && (
             <div className="flex justify-end mt-4 pt-4 border-t">
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">Grand Total</p>
@@ -634,72 +719,13 @@ export default function ReceiptDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Verify Dialog */}
-      <Dialog open={verifyDialogOpen} onOpenChange={setVerifyDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Verify Prices</DialogTitle>
-            <DialogDescription>
-              Select a price catalogue to compare this receipt against. The system
-              will match products and identify any price discrepancies.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Select Catalogue</Label>
-              <Select value={selectedCatalogue} onValueChange={setSelectedCatalogue}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a catalogue..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {catalogues?.map((catalogue) => (
-                    <SelectItem key={catalogue.id} value={catalogue.id}>
-                      {catalogue.name} ({catalogue._count.items} items)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {(!catalogues || catalogues.length === 0) && (
-                <p className="text-sm text-muted-foreground">
-                  No catalogues available.{" "}
-                  <Link href="/catalogues/upload" className="text-primary underline">
-                    Upload one first
-                  </Link>
-                </p>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setVerifyDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleVerify}
-              disabled={!selectedCatalogue || verifyMutation.isPending}
-            >
-              {verifyMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Verifying...
-                </>
-              ) : (
-                <>
-                  <FileCheck className="mr-2 h-4 w-4" />
-                  Start Verification
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Currency Edit Dialog */}
       <Dialog open={currencyDialogOpen} onOpenChange={setCurrencyDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Change Currency</DialogTitle>
             <DialogDescription>
-              Select the correct currency for this receipt. This will affect how prices are displayed and converted during comparison.
+              Select the correct currency for this receipt.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
