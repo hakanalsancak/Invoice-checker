@@ -1,10 +1,10 @@
 "use client";
 
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, FileCheck, Loader2 } from "lucide-react";
+import { ArrowLeft, FileCheck, Loader2, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -37,6 +37,14 @@ import {
 import { Label } from "@/components/ui/label";
 import { PageLoading } from "@/components/shared/LoadingStates";
 import { ReceiptWithItems } from "@/types";
+import { formatPrice, getCurrencySymbol } from "@/lib/currency";
+
+const CURRENCIES = [
+  { code: "USD", symbol: "$", name: "US Dollar" },
+  { code: "GBP", symbol: "£", name: "British Pound" },
+  { code: "EUR", symbol: "€", name: "Euro" },
+  { code: "TRY", symbol: "₺", name: "Turkish Lira" },
+];
 
 interface Catalogue {
   id: string;
@@ -69,6 +77,17 @@ async function verifyReceipt(receiptId: string, catalogueId: string) {
   return data.data;
 }
 
+async function updateReceiptCurrency(receiptId: string, currency: string) {
+  const response = await fetch(`/api/receipts/${receiptId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ currency }),
+  });
+  const data = await response.json();
+  if (!data.success) throw new Error(data.error);
+  return data.data;
+}
+
 function StatusBadge({ status }: { status: string }) {
   const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
     PENDING: { variant: "secondary", label: "Pending" },
@@ -84,11 +103,14 @@ export default function ReceiptDetailPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const receiptId = params.id as string;
   const showVerify = searchParams.get("verify") === "true";
 
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
   const [selectedCatalogue, setSelectedCatalogue] = useState<string>("");
+  const [currencyDialogOpen, setCurrencyDialogOpen] = useState(false);
+  const [selectedCurrency, setSelectedCurrency] = useState<string>("");
 
   useEffect(() => {
     if (showVerify) {
@@ -116,6 +138,29 @@ export default function ReceiptDetailPage() {
       toast.error(error.message || "Failed to verify prices");
     },
   });
+
+  const currencyMutation = useMutation({
+    mutationFn: (currency: string) => updateReceiptCurrency(receiptId, currency),
+    onSuccess: () => {
+      toast.success("Currency updated!");
+      queryClient.invalidateQueries({ queryKey: ["receipt", receiptId] });
+      setCurrencyDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to update currency");
+    },
+  });
+
+  const openCurrencyDialog = () => {
+    setSelectedCurrency(receipt?.currency || "USD");
+    setCurrencyDialogOpen(true);
+  };
+
+  const handleCurrencyChange = () => {
+    if (selectedCurrency) {
+      currencyMutation.mutate(selectedCurrency);
+    }
+  };
 
   if (isLoading) return <PageLoading />;
 
@@ -158,7 +203,7 @@ export default function ReceiptDetailPage() {
             <StatusBadge status={receipt.status} />
           </div>
           <p className="text-muted-foreground mt-1">{receipt.originalFileName}</p>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
             <span>
               {receipt.receiptDate
                 ? format(new Date(receipt.receiptDate), "MMMM d, yyyy")
@@ -169,9 +214,17 @@ export default function ReceiptDetailPage() {
             {receipt.totalAmount && (
               <>
                 <span>•</span>
-                <span>Total: ₺{Number(receipt.totalAmount).toFixed(2)}</span>
+                <span>Total: {formatPrice(receipt.totalAmount, receipt.currency || "USD")}</span>
               </>
             )}
+            <span>•</span>
+            <button 
+              onClick={openCurrencyDialog}
+              className="inline-flex items-center gap-1 text-primary hover:underline"
+            >
+              Currency: {getCurrencySymbol(receipt.currency || "USD")} {receipt.currency || "USD"}
+              <Pencil className="h-3 w-3" />
+            </button>
           </div>
         </div>
         {receipt.status === "COMPLETED" && (
@@ -219,9 +272,9 @@ export default function ReceiptDetailPage() {
                       <TableCell>
                         {Number(item.quantity)} {item.unit || ""}
                       </TableCell>
-                      <TableCell>₺{Number(item.unitPrice).toFixed(2)}</TableCell>
+                      <TableCell>{formatPrice(item.unitPrice, receipt.currency || "USD")}</TableCell>
                       <TableCell className="font-medium">
-                        ₺{Number(item.totalPrice).toFixed(2)}
+                        {formatPrice(item.totalPrice, receipt.currency || "USD")}
                       </TableCell>
                     </TableRow>
                   ))
@@ -235,7 +288,7 @@ export default function ReceiptDetailPage() {
             <div className="flex justify-end mt-4 pt-4 border-t">
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">Grand Total</p>
-                <p className="text-2xl font-bold">₺{Number(receipt.totalAmount).toFixed(2)}</p>
+                <p className="text-2xl font-bold">{formatPrice(receipt.totalAmount, receipt.currency || "USD")}</p>
               </div>
             </div>
           )}
@@ -295,6 +348,53 @@ export default function ReceiptDetailPage() {
                   <FileCheck className="mr-2 h-4 w-4" />
                   Start Verification
                 </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Currency Edit Dialog */}
+      <Dialog open={currencyDialogOpen} onOpenChange={setCurrencyDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Currency</DialogTitle>
+            <DialogDescription>
+              Select the correct currency for this receipt. This will affect how prices are displayed and converted during comparison.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Currency</Label>
+              <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select currency..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((currency) => (
+                    <SelectItem key={currency.code} value={currency.code}>
+                      {currency.symbol} {currency.code} - {currency.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCurrencyDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCurrencyChange}
+              disabled={currencyMutation.isPending || selectedCurrency === receipt?.currency}
+            >
+              {currencyMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Currency"
               )}
             </Button>
           </DialogFooter>

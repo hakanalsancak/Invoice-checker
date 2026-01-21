@@ -38,10 +38,24 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { PageLoading } from "@/components/shared/LoadingStates";
 import { CatalogueWithItems, CatalogueItemDisplay } from "@/types";
 import { formatPrice, getCurrencySymbol } from "@/lib/currency";
+
+const CURRENCIES = [
+  { code: "USD", symbol: "$", name: "US Dollar" },
+  { code: "GBP", symbol: "£", name: "British Pound" },
+  { code: "EUR", symbol: "€", name: "Euro" },
+  { code: "TRY", symbol: "₺", name: "Turkish Lira" },
+];
 
 async function fetchCatalogue(id: string): Promise<CatalogueWithItems> {
   const response = await fetch(`/api/catalogues/${id}`);
@@ -80,6 +94,17 @@ async function createItem(catalogueId: string, data: { productName: string; pric
   return result.data;
 }
 
+async function updateCatalogueCurrency(catalogueId: string, currency: string) {
+  const response = await fetch(`/api/catalogues/${catalogueId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ currency }),
+  });
+  const result = await response.json();
+  if (!result.success) throw new Error(result.error);
+  return result.data;
+}
+
 function StatusBadge({ status }: { status: string }) {
   const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
     PENDING: { variant: "secondary", label: "Pending" },
@@ -109,6 +134,8 @@ export default function CatalogueDetailPage() {
   const [search, setSearch] = useState("");
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
   const [isAddingItem, setIsAddingItem] = useState(false);
+  const [currencyDialogOpen, setCurrencyDialogOpen] = useState(false);
+  const [selectedCurrency, setSelectedCurrency] = useState<string>("");
   const [newItem, setNewItem] = useState({
     productName: "",
     price: "",
@@ -159,6 +186,29 @@ export default function CatalogueDetailPage() {
       toast.error(error.message || "Failed to add item");
     },
   });
+
+  const currencyMutation = useMutation({
+    mutationFn: (currency: string) => updateCatalogueCurrency(catalogueId, currency),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["catalogue", catalogueId] });
+      setCurrencyDialogOpen(false);
+      toast.success("Currency updated!");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to update currency");
+    },
+  });
+
+  const openCurrencyDialog = () => {
+    setSelectedCurrency(catalogue?.currency || "GBP");
+    setCurrencyDialogOpen(true);
+  };
+
+  const handleCurrencyChange = () => {
+    if (selectedCurrency) {
+      currencyMutation.mutate(selectedCurrency);
+    }
+  };
 
   if (isLoading) return <PageLoading />;
 
@@ -236,10 +286,21 @@ export default function CatalogueDetailPage() {
             <StatusBadge status={catalogue.status} />
           </div>
           <p className="text-muted-foreground mt-1">{catalogue.originalFileName}</p>
-          <p className="text-sm text-muted-foreground">
-            Created on {format(new Date(catalogue.createdAt), "MMMM d, yyyy")} • 
-            {" "}{catalogue.items.length} items • Language: {catalogue.language.toUpperCase()} • Currency: {getCurrencySymbol(catalogue.currency)} ({catalogue.currency})
-          </p>
+          <div className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+            <span>Created on {format(new Date(catalogue.createdAt), "MMMM d, yyyy")}</span>
+            <span>•</span>
+            <span>{catalogue.items.length} items</span>
+            <span>•</span>
+            <span>Language: {catalogue.language.toUpperCase()}</span>
+            <span>•</span>
+            <button 
+              onClick={openCurrencyDialog}
+              className="inline-flex items-center gap-1 text-primary hover:underline"
+            >
+              Currency: {getCurrencySymbol(catalogue.currency)} {catalogue.currency}
+              <Pencil className="h-3 w-3" />
+            </button>
+          </div>
         </div>
         <Dialog open={isAddingItem} onOpenChange={setIsAddingItem}>
           <DialogTrigger asChild>
@@ -482,6 +543,53 @@ export default function CatalogueDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Currency Edit Dialog */}
+      <Dialog open={currencyDialogOpen} onOpenChange={setCurrencyDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Currency</DialogTitle>
+            <DialogDescription>
+              Select the correct currency for this catalogue. This will affect how prices are displayed and compared.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Currency</Label>
+              <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select currency..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((currency) => (
+                    <SelectItem key={currency.code} value={currency.code}>
+                      {currency.symbol} {currency.code} - {currency.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCurrencyDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCurrencyChange}
+              disabled={currencyMutation.isPending || selectedCurrency === catalogue?.currency}
+            >
+              {currencyMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Currency"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

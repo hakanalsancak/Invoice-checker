@@ -52,6 +52,71 @@ export async function GET(
   }
 }
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth();
+    const { id } = await params;
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const { currency } = body;
+
+    // Validate currency
+    const validCurrencies = ["USD", "GBP", "EUR", "TRY"];
+    if (currency && !validCurrencies.includes(currency)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid currency" },
+        { status: 400 }
+      );
+    }
+
+    // Verify ownership
+    const existing = await db.receipt.findFirst({
+      where: {
+        id,
+        userId: session.user.id,
+      },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { success: false, error: "Receipt not found" },
+        { status: 404 }
+      );
+    }
+
+    const updated = await db.receipt.update({
+      where: { id },
+      data: { currency },
+      include: {
+        items: {
+          orderBy: { lineNumber: "asc" },
+        },
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: updated,
+    });
+  } catch (error) {
+    console.error("Update receipt error:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to update receipt" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

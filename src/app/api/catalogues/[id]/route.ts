@@ -84,11 +84,21 @@ export async function PUT(
       );
     }
 
+    // Validate currency if provided
+    const validCurrencies = ["USD", "GBP", "EUR", "TRY"];
+    if (body.currency && !validCurrencies.includes(body.currency)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid currency" },
+        { status: 400 }
+      );
+    }
+
     const catalogue = await db.catalogue.update({
       where: { id },
       data: {
         name: body.name,
         language: body.language,
+        currency: body.currency,
       },
     });
 
