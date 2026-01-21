@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { matchProducts } from "@/services/ai/productMatcher";
 import { ComparisonStatus, MatchConfidence } from "@/types";
-import { convertCurrency, getExchangeRate } from "@/lib/currency";
+import { getExchangeRate } from "@/lib/currency";
 
 interface ComparisonItemResult {
   receiptItemId: string;
@@ -62,7 +62,7 @@ export async function compareReceiptWithCatalogue(
 
   const receiptCurrency = receipt.currency || "USD";
   const catalogueCurrency = catalogue.currency || "GBP";
-  const exchangeRate = getExchangeRate(receiptCurrency, catalogueCurrency);
+  const exchangeRate = await getExchangeRate(receiptCurrency, catalogueCurrency);
 
   console.log(`Comparing: Receipt (${receiptCurrency}) vs Catalogue (${catalogueCurrency}), Rate: ${exchangeRate}`);
 
@@ -90,8 +90,8 @@ export async function compareReceiptWithCatalogue(
     const match = matches.get(receiptItem.id);
     const receiptPrice = Number(receiptItem.unitPrice);
     
-    // Convert receipt price to catalogue currency
-    const receiptPriceConverted = convertCurrency(receiptPrice, receiptCurrency, catalogueCurrency);
+    // Convert receipt price to catalogue currency using the fetched exchange rate
+    const receiptPriceConverted = receiptPrice * exchangeRate;
     
     if (!match) {
       // No match found
