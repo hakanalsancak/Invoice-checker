@@ -308,7 +308,7 @@ export default function CatalogueDetailPage() {
                 <Input
                   value={newItem.productName}
                   onChange={(e) => setNewItem({ ...newItem, productName: e.target.value })}
-                  placeholder="e.g., ALORA 3+3+B"
+                  placeholder="Enter product name"
                 />
               </div>
               <div className="space-y-2">

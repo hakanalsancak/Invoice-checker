@@ -209,7 +209,7 @@ export default function CreateReceiptPage() {
               <Label htmlFor="supplierName">Supplier Name *</Label>
               <Input
                 id="supplierName"
-                placeholder="e.g., Kapriss Furniture Ltd."
+                placeholder="Enter supplier name"
                 value={supplierName}
                 onChange={(e) => setSupplierName(e.target.value)}
                 disabled={createMutation.isPending}

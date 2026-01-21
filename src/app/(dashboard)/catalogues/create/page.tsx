@@ -103,7 +103,7 @@ export default function CreateCataloguePage() {
               <Label htmlFor="name">Catalogue Name *</Label>
               <Input
                 id="name"
-                placeholder="e.g., Kapriss Furniture 2024"
+                placeholder="Enter catalogue name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 disabled={createMutation.isPending}
