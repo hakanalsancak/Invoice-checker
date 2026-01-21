@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { BarChart3, MoreHorizontal, Trash2, Eye, Download, Loader2 } from "lucide-react";
+import { BarChart3, MoreHorizontal, Trash2, Eye, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -69,21 +69,6 @@ async function deleteReport(id: string): Promise<void> {
   });
   const data = await response.json();
   if (!data.success) throw new Error(data.error);
-}
-
-async function downloadCSV(id: string): Promise<void> {
-  const response = await fetch(`/api/reports/${id}?format=csv`);
-  if (!response.ok) throw new Error("Failed to download");
-  
-  const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `report-${id}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  window.URL.revokeObjectURL(url);
-  document.body.removeChild(a);
 }
 
 export default function ReportsPage() {
@@ -237,12 +222,8 @@ export default function ReportsPage() {
                                   <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => downloadCSV(report.id)}>
-                                  <Download className="mr-2 h-4 w-4" />
-                                  Export CSV
-                                </DropdownMenuItem>
-                                <AlertDialog>
+                            <DropdownMenuContent align="end">
+                              <AlertDialog>
                                   <AlertDialogTrigger asChild>
                                     <DropdownMenuItem
                                       onSelect={(e) => e.preventDefault()}

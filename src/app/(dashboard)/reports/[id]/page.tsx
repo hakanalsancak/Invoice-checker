@@ -31,27 +31,13 @@ import { Progress } from "@/components/ui/progress";
 import { PageLoading } from "@/components/shared/LoadingStates";
 import { ComparisonReportWithDetails, ComparisonStatus, MatchConfidence } from "@/types";
 import { formatPrice, getCurrencySymbol } from "@/lib/currency";
+import { exportReportToPDF } from "@/lib/pdfExport";
 
 async function fetchReport(id: string): Promise<ComparisonReportWithDetails> {
   const response = await fetch(`/api/reports/${id}`);
   const data = await response.json();
   if (!data.success) throw new Error(data.error);
   return data.data;
-}
-
-async function downloadCSV(id: string): Promise<void> {
-  const response = await fetch(`/api/reports/${id}?format=csv`);
-  if (!response.ok) throw new Error("Failed to download");
-
-  const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `report-${id}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  window.URL.revokeObjectURL(url);
-  document.body.removeChild(a);
 }
 
 function StatusIcon({ status }: { status: ComparisonStatus }) {
@@ -124,12 +110,36 @@ export default function ReportDetailPage() {
   const unmatchedItems = report.items.filter((i) => i.status === "UNMATCHED");
   const netDifference = Number(report.totalOvercharge) - Number(report.totalUndercharge);
 
-  const handleDownload = async () => {
+  const handleDownloadPDF = () => {
     try {
-      await downloadCSV(reportId);
-      toast.success("Report downloaded successfully");
-    } catch {
-      toast.error("Failed to download report");
+      exportReportToPDF({
+        supplierName: report.receipt.supplierName || "Unknown Supplier",
+        catalogueName: report.catalogue.name,
+        receiptDate: report.receipt.receiptDate 
+          ? format(new Date(report.receipt.receiptDate), "MMM d, yyyy")
+          : "Not specified",
+        reportDate: format(new Date(report.createdAt), "MMM d, yyyy"),
+        receiptCurrency: report.receiptCurrency,
+        catalogueCurrency: report.catalogueCurrency,
+        exchangeRate: report.exchangeRate ? Number(report.exchangeRate) : null,
+        totalItems: report.totalItems,
+        matchedItems: report.matchedItems,
+        totalOvercharge: Number(report.totalOvercharge),
+        totalUndercharge: Number(report.totalUndercharge),
+        items: report.items.map(item => ({
+          productName: item.receiptItem.productName,
+          quantity: Number(item.receiptItem.quantity),
+          receiptPrice: Number(item.receiptPrice),
+          receiptPriceConverted: item.receiptPriceConverted ? Number(item.receiptPriceConverted) : null,
+          cataloguePrice: item.cataloguePrice ? Number(item.cataloguePrice) : null,
+          priceDifference: item.priceDifference ? Number(item.priceDifference) : null,
+          percentageDiff: item.percentageDiff ? Number(item.percentageDiff) : null,
+        })),
+      });
+      toast.success("PDF downloaded successfully");
+    } catch (error) {
+      console.error("PDF export error:", error);
+      toast.error("Failed to download PDF");
     }
   };
 
@@ -170,9 +180,9 @@ export default function ReportDetailPage() {
             </div>
           )}
         </div>
-        <Button onClick={handleDownload}>
+        <Button onClick={handleDownloadPDF}>
           <Download className="mr-2 h-4 w-4" />
-          Export CSV
+          Export PDF
         </Button>
       </div>
 
