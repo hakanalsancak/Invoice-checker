@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Plus, Receipt, MoreHorizontal, Trash2, Eye, FileCheck, Loader2 } from "lucide-react";
+import { Plus, Receipt as ReceiptIcon, MoreHorizontal, Trash2, Eye, FileCheck, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -27,6 +27,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { TableSkeleton } from "@/components/shared/LoadingStates";
+import { formatPrice } from "@/lib/currency";
 
 interface ReceiptData {
   id: string;
@@ -35,6 +36,7 @@ interface ReceiptData {
   receiptDate: string | null;
   totalAmount: number | null;
   language: string;
+  currency: string;
   status: string;
   createdAt: string;
   _count: {
@@ -124,9 +126,9 @@ export default function ReceiptsPage() {
           </p>
         </div>
         <Button asChild>
-          <Link href="/receipts/upload">
+          <Link href="/receipts/create">
             <Plus className="mr-2 h-4 w-4" />
-            Upload Receipt
+            Create Receipt
           </Link>
         </Button>
       </div>
@@ -136,16 +138,16 @@ export default function ReceiptsPage() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <div className="p-4 rounded-full bg-muted mb-4">
-              <Receipt className="h-8 w-8 text-muted-foreground" />
+              <ReceiptIcon className="h-8 w-8 text-muted-foreground" />
             </div>
             <h3 className="text-lg font-semibold mb-2">No receipts yet</h3>
             <p className="text-muted-foreground text-center mb-4">
-              Upload your first receipt to start verifying prices
+              Create your first receipt to start verifying prices
             </p>
             <Button asChild>
-              <Link href="/receipts/upload">
+              <Link href="/receipts/create">
                 <Plus className="mr-2 h-4 w-4" />
-                Upload Receipt
+                Create Receipt
               </Link>
             </Button>
           </CardContent>
@@ -235,7 +237,7 @@ export default function ReceiptsPage() {
                   <div className="text-right">
                     {receipt.totalAmount && (
                       <p className="font-semibold">
-                        ₺{Number(receipt.totalAmount).toFixed(2)}
+                        {formatPrice(receipt.totalAmount, receipt.currency || "USD")}
                       </p>
                     )}
                     <p className="text-xs text-muted-foreground">

@@ -18,23 +18,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FileUploader } from "@/components/shared/FileUploader";
 
-interface UploadData {
-  file: File;
+const CURRENCIES = [
+  { code: "USD", symbol: "$", name: "US Dollar" },
+  { code: "GBP", symbol: "£", name: "British Pound" },
+  { code: "EUR", symbol: "€", name: "Euro" },
+  { code: "TRY", symbol: "₺", name: "Turkish Lira" },
+];
+
+interface CreateData {
   name: string;
-  language: string;
+  currency: string;
 }
 
-async function uploadCatalogue(data: UploadData) {
-  const formData = new FormData();
-  formData.append("file", data.file);
-  formData.append("name", data.name);
-  formData.append("language", data.language);
-
+async function createCatalogue(data: CreateData) {
   const response = await fetch("/api/catalogues", {
     method: "POST",
-    body: formData,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
   });
 
   const result = await response.json();
@@ -42,43 +43,31 @@ async function uploadCatalogue(data: UploadData) {
   return result.data;
 }
 
-export default function UploadCataloguePage() {
+export default function CreateCataloguePage() {
   const router = useRouter();
-  const [file, setFile] = useState<File | null>(null);
   const [name, setName] = useState("");
-  const [language, setLanguage] = useState("tr");
+  const [currency, setCurrency] = useState("GBP");
 
-  const uploadMutation = useMutation({
-    mutationFn: uploadCatalogue,
+  const createMutation = useMutation({
+    mutationFn: createCatalogue,
     onSuccess: (data) => {
-      toast.success(`Catalogue uploaded successfully! ${data._count?.items || 0} items extracted.`);
+      toast.success("Catalogue created! Now add your products.");
       router.push(`/catalogues/${data.id}`);
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to upload catalogue");
+      toast.error(error.message || "Failed to create catalogue");
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!file) {
-      toast.error("Please select a file to upload");
+    if (!name.trim()) {
+      toast.error("Please enter a catalogue name");
       return;
     }
 
-    uploadMutation.mutate({
-      file,
-      name: name || file.name.replace(/\.[^/.]+$/, ""),
-      language,
-    });
-  };
-
-  const handleFileSelect = (selectedFile: File) => {
-    setFile(selectedFile);
-    if (!name) {
-      setName(selectedFile.name.replace(/\.[^/.]+$/, ""));
-    }
+    createMutation.mutate({ name: name.trim(), currency });
   };
 
   return (
@@ -93,70 +82,59 @@ export default function UploadCataloguePage() {
 
       {/* Page header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Upload Catalogue</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Create Catalogue</h1>
         <p className="text-muted-foreground">
-          Upload your supplier&apos;s price catalogue for AI extraction
+          Create a new price catalogue to store your supplier&apos;s products and prices
         </p>
       </div>
 
-      {/* Upload form */}
+      {/* Create form */}
       <Card>
         <CardHeader>
           <CardTitle>Catalogue Details</CardTitle>
           <CardDescription>
-            Upload a file containing your product prices. Our AI will automatically
-            extract all items with their prices.
+            Enter the basic details for your catalogue. You&apos;ll be able to add products after creating it.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* File upload */}
-            <div className="space-y-2">
-              <Label>File</Label>
-              <FileUploader
-                onFileSelect={handleFileSelect}
-                disabled={uploadMutation.isPending}
-                isUploading={uploadMutation.isPending}
-              />
-            </div>
-
             {/* Catalogue name */}
             <div className="space-y-2">
-              <Label htmlFor="name">Catalogue Name</Label>
+              <Label htmlFor="name">Catalogue Name *</Label>
               <Input
                 id="name"
-                placeholder="e.g., Main Supplier Price List 2024"
+                placeholder="e.g., Kapriss Furniture 2024"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                disabled={uploadMutation.isPending}
+                disabled={createMutation.isPending}
+                autoFocus
               />
               <p className="text-sm text-muted-foreground">
-                Give your catalogue a descriptive name
+                Give your catalogue a descriptive name (e.g., supplier name + year)
               </p>
             </div>
 
-            {/* Language */}
+            {/* Currency */}
             <div className="space-y-2">
-              <Label htmlFor="language">Document Language</Label>
+              <Label htmlFor="currency">Currency *</Label>
               <Select
-                value={language}
-                onValueChange={setLanguage}
-                disabled={uploadMutation.isPending}
+                value={currency}
+                onValueChange={setCurrency}
+                disabled={createMutation.isPending}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="tr">Turkish (Türkçe)</SelectItem>
-                  <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="de">German (Deutsch)</SelectItem>
-                  <SelectItem value="fr">French (Français)</SelectItem>
-                  <SelectItem value="es">Spanish (Español)</SelectItem>
-                  <SelectItem value="auto">Auto-detect</SelectItem>
+                  {CURRENCIES.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>
+                      {c.symbol} {c.code} - {c.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground">
-                Select the language of your document for better extraction accuracy
+                Select the currency for prices in this catalogue
               </p>
             </div>
 
@@ -164,23 +142,23 @@ export default function UploadCataloguePage() {
             <div className="flex gap-4">
               <Button
                 type="submit"
-                disabled={!file || uploadMutation.isPending}
+                disabled={!name.trim() || createMutation.isPending}
                 className="flex-1"
               >
-                {uploadMutation.isPending ? (
+                {createMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processing...
+                    Creating...
                   </>
                 ) : (
-                  "Upload & Extract"
+                  "Create Catalogue"
                 )}
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => router.push("/catalogues")}
-                disabled={uploadMutation.isPending}
+                disabled={createMutation.isPending}
               >
                 Cancel
               </Button>
@@ -189,16 +167,15 @@ export default function UploadCataloguePage() {
         </CardContent>
       </Card>
 
-      {/* Tips */}
+      {/* Info */}
       <Card className="bg-muted/50">
         <CardHeader>
-          <CardTitle className="text-lg">Tips for Best Results</CardTitle>
+          <CardTitle className="text-lg">Next Steps</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>• Ensure your document is clear and readable</p>
-          <p>• PDFs and images with good resolution work best</p>
-          <p>• Include product names and prices in a tabular format if possible</p>
-          <p>• You can edit extracted items after upload</p>
+          <p>1. Create the catalogue with a name and currency</p>
+          <p>2. Add products manually with their names and prices</p>
+          <p>3. Use this catalogue to verify receipt prices</p>
         </CardContent>
       </Card>
     </div>

@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { createReceiptSchema } from "@/lib/validators/receipt";
-import { processFile } from "@/services/file";
-import { extractReceipt } from "@/services/ai";
+import { z } from "zod";
+
+const createReceiptSchema = z.object({
+  supplierName: z.string().min(1, "Supplier name is required"),
+  receiptDate: z.string().optional(),
+  currency: z.string().default("USD"),
+});
 
 export async function GET() {
   try {
@@ -50,24 +54,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const formData = await request.formData();
-    const file = formData.get("file") as File | null;
-    const supplierName = formData.get("supplierName") as string | null;
-    const receiptDate = formData.get("receiptDate") as string | null;
-    const language = formData.get("language") as string | null;
-
-    if (!file) {
-      return NextResponse.json(
-        { success: false, error: "No file provided" },
-        { status: 400 }
-      );
-    }
-
-    const validated = createReceiptSchema.safeParse({
-      supplierName,
-      receiptDate,
-      language: language || "tr",
-    });
+    const body = await request.json();
+    
+    const validated = createReceiptSchema.safeParse(body);
 
     if (!validated.success) {
       return NextResponse.json(
@@ -76,95 +65,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create receipt record with processing status
+    // Create receipt record
     const receipt = await db.receipt.create({
       data: {
         userId: session.user.id,
-        supplierName: validated.data.supplierName || null,
-        originalFileName: file.name,
+        supplierName: validated.data.supplierName,
+        originalFileName: "Manual Entry",
         receiptDate: validated.data.receiptDate ? new Date(validated.data.receiptDate) : null,
-        language: validated.data.language,
-        status: "PROCESSING",
+        language: "en",
+        currency: validated.data.currency,
+        status: "COMPLETED", // Already complete since it's manual entry
+      },
+      include: {
+        _count: { select: { items: true } },
       },
     });
 
-    // Process file
-    try {
-      const buffer = Buffer.from(await file.arrayBuffer());
-      const processedFile = await processFile(buffer, file.name);
-
-      if (!processedFile.success) {
-        await db.receipt.update({
-          where: { id: receipt.id },
-          data: { status: "FAILED" },
-        });
-        return NextResponse.json(
-          { success: false, error: processedFile.error || "Failed to process file" },
-          { status: 400 }
-        );
-      }
-
-      // Extract items using AI
-      const extraction = await extractReceipt(processedFile);
-
-      // Save extracted items
-      if (extraction.items.length > 0) {
-        await db.receiptItem.createMany({
-          data: extraction.items.map(item => ({
-            receiptId: receipt.id,
-            productName: item.productName,
-            rawText: item.rawText,
-            quantity: item.quantity,
-            unit: item.unit,
-            unitPrice: item.unitPrice,
-            totalPrice: item.totalPrice,
-            lineNumber: item.lineNumber,
-          })),
-        });
-      }
-
-      // Update receipt status
-      await db.receipt.update({
-        where: { id: receipt.id },
-        data: {
-          status: "COMPLETED",
-          supplierName: extraction.supplier || validated.data.supplierName || null,
-          receiptDate: extraction.date ? new Date(extraction.date) : (validated.data.receiptDate ? new Date(validated.data.receiptDate) : null),
-          totalAmount: extraction.totalAmount,
-          language: extraction.detectedLanguage,
-          currency: extraction.detectedCurrency || "USD",
-        },
-      });
-
-      // Fetch updated receipt with items
-      const updatedReceipt = await db.receipt.findUnique({
-        where: { id: receipt.id },
-        include: {
-          items: {
-            orderBy: { lineNumber: "asc" },
-          },
-          _count: { select: { items: true } },
-        },
-      });
-
-      return NextResponse.json({
-        success: true,
-        data: updatedReceipt,
-      });
-    } catch (processingError) {
-      console.error("Processing error:", processingError);
-      await db.receipt.update({
-        where: { id: receipt.id },
-        data: { status: "FAILED" },
-      });
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: processingError instanceof Error ? processingError.message : "Processing failed" 
-        },
-        { status: 500 }
-      );
-    }
+    return NextResponse.json({
+      success: true,
+      data: receipt,
+    });
   } catch (error) {
     console.error("Create receipt error:", error);
     return NextResponse.json(

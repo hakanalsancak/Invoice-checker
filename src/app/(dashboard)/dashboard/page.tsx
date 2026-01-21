@@ -46,7 +46,7 @@ export default function DashboardPage() {
     {
       title: "Catalogues",
       value: stats.totalCatalogues,
-      description: "Price catalogues uploaded",
+      description: "Price catalogues created",
       icon: FileText,
       href: "/catalogues",
       color: "text-blue-500",
@@ -55,7 +55,7 @@ export default function DashboardPage() {
     {
       title: "Receipts",
       value: stats.totalReceipts,
-      description: "Receipts processed",
+      description: "Receipts created",
       icon: Receipt,
       href: "/receipts",
       color: "text-emerald-500",
@@ -119,15 +119,15 @@ export default function DashboardPage() {
         </div>
         <div className="flex gap-2">
           <Button asChild variant="outline">
-            <Link href="/receipts/upload">
+            <Link href="/receipts/create">
               <Plus className="mr-2 h-4 w-4" />
-              Upload Receipt
+              New Receipt
             </Link>
           </Button>
           <Button asChild>
-            <Link href="/catalogues/upload">
+            <Link href="/catalogues/create">
               <Plus className="mr-2 h-4 w-4" />
-              Upload Catalogue
+              New Catalogue
             </Link>
           </Button>
         </div>
@@ -167,7 +167,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <Link
-              href="/catalogues/upload"
+              href="/catalogues/create"
               className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent transition-colors"
             >
               <div className="flex items-center gap-3">
@@ -175,7 +175,7 @@ export default function DashboardPage() {
                   <FileText className="h-5 w-5 text-blue-500" />
                 </div>
                 <div>
-                  <p className="font-medium">Upload Price Catalogue</p>
+                  <p className="font-medium">Create Price Catalogue</p>
                   <p className="text-sm text-muted-foreground">
                     Add your supplier&apos;s price list
                   </p>
@@ -185,7 +185,7 @@ export default function DashboardPage() {
             </Link>
 
             <Link
-              href="/receipts/upload"
+              href="/receipts/create"
               className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent transition-colors"
             >
               <div className="flex items-center gap-3">
@@ -193,9 +193,9 @@ export default function DashboardPage() {
                   <Receipt className="h-5 w-5 text-emerald-500" />
                 </div>
                 <div>
-                  <p className="font-medium">Verify Receipt</p>
+                  <p className="font-medium">Create Receipt</p>
                   <p className="text-sm text-muted-foreground">
-                    Check prices against your catalogue
+                    Add items to verify prices
                   </p>
                 </div>
               </div>
@@ -233,7 +233,7 @@ export default function DashboardPage() {
               <div className="text-center py-8">
                 <p className="text-muted-foreground">No recent activity</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Upload a catalogue or receipt to get started
+                  Create a catalogue or receipt to get started
                 </p>
               </div>
             ) : (

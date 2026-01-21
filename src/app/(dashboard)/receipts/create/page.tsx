@@ -18,25 +18,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FileUploader } from "@/components/shared/FileUploader";
 
-interface UploadData {
-  file: File;
-  supplierName?: string;
+const CURRENCIES = [
+  { code: "USD", symbol: "$", name: "US Dollar" },
+  { code: "GBP", symbol: "£", name: "British Pound" },
+  { code: "EUR", symbol: "€", name: "Euro" },
+  { code: "TRY", symbol: "₺", name: "Turkish Lira" },
+];
+
+interface CreateData {
+  supplierName: string;
   receiptDate?: string;
-  language: string;
+  currency: string;
 }
 
-async function uploadReceipt(data: UploadData) {
-  const formData = new FormData();
-  formData.append("file", data.file);
-  if (data.supplierName) formData.append("supplierName", data.supplierName);
-  if (data.receiptDate) formData.append("receiptDate", data.receiptDate);
-  formData.append("language", data.language);
-
+async function createReceipt(data: CreateData) {
   const response = await fetch("/api/receipts", {
     method: "POST",
-    body: formData,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
   });
 
   const result = await response.json();
@@ -44,37 +44,35 @@ async function uploadReceipt(data: UploadData) {
   return result.data;
 }
 
-export default function UploadReceiptPage() {
+export default function CreateReceiptPage() {
   const router = useRouter();
-  const [file, setFile] = useState<File | null>(null);
   const [supplierName, setSupplierName] = useState("");
   const [receiptDate, setReceiptDate] = useState("");
-  const [language, setLanguage] = useState("tr");
+  const [currency, setCurrency] = useState("USD");
 
-  const uploadMutation = useMutation({
-    mutationFn: uploadReceipt,
+  const createMutation = useMutation({
+    mutationFn: createReceipt,
     onSuccess: (data) => {
-      toast.success(`Receipt uploaded successfully! ${data._count?.items || 0} items extracted.`);
-      router.push(`/receipts/${data.id}?verify=true`);
+      toast.success("Receipt created! Now add your items.");
+      router.push(`/receipts/${data.id}`);
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to upload receipt");
+      toast.error(error.message || "Failed to create receipt");
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!file) {
-      toast.error("Please select a file to upload");
+    if (!supplierName.trim()) {
+      toast.error("Please enter a supplier name");
       return;
     }
 
-    uploadMutation.mutate({
-      file,
-      supplierName: supplierName || undefined,
+    createMutation.mutate({
+      supplierName: supplierName.trim(),
       receiptDate: receiptDate || undefined,
-      language,
+      currency,
     });
   };
 
@@ -90,106 +88,98 @@ export default function UploadReceiptPage() {
 
       {/* Page header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Upload Receipt</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Create Receipt</h1>
         <p className="text-muted-foreground">
-          Upload a receipt or invoice for AI extraction and price verification
+          Create a new receipt or invoice to verify prices against your catalogues
         </p>
       </div>
 
-      {/* Upload form */}
+      {/* Create form */}
       <Card>
         <CardHeader>
           <CardTitle>Receipt Details</CardTitle>
           <CardDescription>
-            Upload your receipt or invoice. Our AI will automatically extract all
-            line items for price comparison.
+            Enter the basic details for your receipt. You&apos;ll be able to add line items after creating it.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* File upload */}
-            <div className="space-y-2">
-              <Label>File</Label>
-              <FileUploader
-                onFileSelect={(f) => setFile(f)}
-                disabled={uploadMutation.isPending}
-                isUploading={uploadMutation.isPending}
-              />
-            </div>
-
             {/* Supplier name */}
             <div className="space-y-2">
-              <Label htmlFor="supplierName">Supplier Name (Optional)</Label>
+              <Label htmlFor="supplierName">Supplier Name *</Label>
               <Input
                 id="supplierName"
-                placeholder="e.g., ABC Wholesale Ltd."
+                placeholder="e.g., Kapriss Furniture Ltd."
                 value={supplierName}
                 onChange={(e) => setSupplierName(e.target.value)}
-                disabled={uploadMutation.isPending}
+                disabled={createMutation.isPending}
+                autoFocus
               />
               <p className="text-sm text-muted-foreground">
-                AI will try to detect this automatically if not provided
+                The name of the supplier/vendor on the invoice
               </p>
             </div>
 
             {/* Receipt date */}
             <div className="space-y-2">
-              <Label htmlFor="receiptDate">Receipt Date (Optional)</Label>
+              <Label htmlFor="receiptDate">Receipt Date</Label>
               <Input
                 id="receiptDate"
                 type="date"
                 value={receiptDate}
                 onChange={(e) => setReceiptDate(e.target.value)}
-                disabled={uploadMutation.isPending}
+                disabled={createMutation.isPending}
               />
               <p className="text-sm text-muted-foreground">
-                AI will try to detect this automatically if not provided
+                The date on the invoice/receipt
               </p>
             </div>
 
-            {/* Language */}
+            {/* Currency */}
             <div className="space-y-2">
-              <Label htmlFor="language">Document Language</Label>
+              <Label htmlFor="currency">Currency *</Label>
               <Select
-                value={language}
-                onValueChange={setLanguage}
-                disabled={uploadMutation.isPending}
+                value={currency}
+                onValueChange={setCurrency}
+                disabled={createMutation.isPending}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="tr">Turkish (Türkçe)</SelectItem>
-                  <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="de">German (Deutsch)</SelectItem>
-                  <SelectItem value="fr">French (Français)</SelectItem>
-                  <SelectItem value="es">Spanish (Español)</SelectItem>
-                  <SelectItem value="auto">Auto-detect</SelectItem>
+                  {CURRENCIES.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>
+                      {c.symbol} {c.code} - {c.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              <p className="text-sm text-muted-foreground">
+                The currency of prices on this receipt
+              </p>
             </div>
 
             {/* Submit */}
             <div className="flex gap-4">
               <Button
                 type="submit"
-                disabled={!file || uploadMutation.isPending}
+                disabled={!supplierName.trim() || createMutation.isPending}
                 className="flex-1"
               >
-                {uploadMutation.isPending ? (
+                {createMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processing...
+                    Creating...
                   </>
                 ) : (
-                  "Upload & Extract"
+                  "Create Receipt"
                 )}
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => router.push("/receipts")}
-                disabled={uploadMutation.isPending}
+                disabled={createMutation.isPending}
               >
                 Cancel
               </Button>
@@ -201,12 +191,12 @@ export default function UploadReceiptPage() {
       {/* Next steps info */}
       <Card className="bg-muted/50">
         <CardHeader>
-          <CardTitle className="text-lg">What Happens Next?</CardTitle>
+          <CardTitle className="text-lg">Next Steps</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>1. AI extracts all line items from your receipt</p>
-          <p>2. You review the extracted items</p>
-          <p>3. Select a price catalogue to compare against</p>
+          <p>1. Create the receipt with supplier name and currency</p>
+          <p>2. Add line items manually (product, quantity, price)</p>
+          <p>3. Click &quot;Verify Prices&quot; to compare against a catalogue</p>
           <p>4. Get instant price verification report</p>
         </CardContent>
       </Card>

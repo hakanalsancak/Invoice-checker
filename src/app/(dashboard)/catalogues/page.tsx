@@ -124,9 +124,9 @@ export default function CataloguesPage() {
           </p>
         </div>
         <Button asChild>
-          <Link href="/catalogues/upload">
+          <Link href="/catalogues/create">
             <Plus className="mr-2 h-4 w-4" />
-            Upload Catalogue
+            Create Catalogue
           </Link>
         </Button>
       </div>
@@ -140,12 +140,12 @@ export default function CataloguesPage() {
             </div>
             <h3 className="text-lg font-semibold mb-2">No catalogues yet</h3>
             <p className="text-muted-foreground text-center mb-4">
-              Upload your first price catalogue to get started
+              Create your first price catalogue to get started
             </p>
             <Button asChild>
-              <Link href="/catalogues/upload">
+              <Link href="/catalogues/create">
                 <Plus className="mr-2 h-4 w-4" />
-                Upload Catalogue
+                Create Catalogue
               </Link>
             </Button>
           </CardContent>
