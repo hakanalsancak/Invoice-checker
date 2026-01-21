@@ -449,7 +449,7 @@ export default function CatalogueDetailPage() {
                       ) : (
                         <>
                           <TableCell className="font-medium">{item.productName}</TableCell>
-                          <TableCell>{formatPrice(item.price, catalogue.currency)}</TableCell>
+                          <TableCell>{formatPrice(Number(item.price), catalogue.currency)}</TableCell>
                           <TableCell className="text-muted-foreground">
                             {item.category || "-"}
                           </TableCell>

@@ -205,7 +205,7 @@ export default function ReportDetailPage() {
           <CardContent>
             <div className="flex items-center justify-between">
               <span className="text-2xl font-bold text-destructive">
-                +{formatPrice(report.totalOvercharge, report.catalogueCurrency)}
+                +{formatPrice(Number(report.totalOvercharge), report.catalogueCurrency)}
               </span>
               <TrendingUp className="h-5 w-5 text-destructive" />
             </div>
@@ -224,7 +224,7 @@ export default function ReportDetailPage() {
           <CardContent>
             <div className="flex items-center justify-between">
               <span className="text-2xl font-bold text-blue-500">
-                -{formatPrice(report.totalUndercharge, report.catalogueCurrency)}
+                -{formatPrice(Number(report.totalUndercharge), report.catalogueCurrency)}
               </span>
               <TrendingDown className="h-5 w-5 text-blue-500" />
             </div>
@@ -367,18 +367,18 @@ export default function ReportDetailPage() {
                       {Number(item.receiptItem.quantity)} {item.receiptItem.unit || ""}
                     </TableCell>
                     <TableCell>
-                      {formatPrice(item.receiptPrice, report.receiptCurrency)}
+                      {formatPrice(Number(item.receiptPrice), report.receiptCurrency)}
                     </TableCell>
                     {report.receiptCurrency !== report.catalogueCurrency && (
                       <TableCell className="text-muted-foreground">
                         {item.receiptPriceConverted
-                          ? formatPrice(item.receiptPriceConverted, report.catalogueCurrency)
+                          ? formatPrice(Number(item.receiptPriceConverted), report.catalogueCurrency)
                           : "-"}
                       </TableCell>
                     )}
                     <TableCell>
                       {item.cataloguePrice
-                        ? formatPrice(item.cataloguePrice, report.catalogueCurrency)
+                        ? formatPrice(Number(item.cataloguePrice), report.catalogueCurrency)
                         : "-"}
                     </TableCell>
                     <TableCell>
@@ -393,7 +393,7 @@ export default function ReportDetailPage() {
                           }
                         >
                           {Number(item.priceDifference) > 0 ? "+" : ""}
-                          {formatPrice(item.priceDifference, report.catalogueCurrency)}
+                          {formatPrice(Number(item.priceDifference), report.catalogueCurrency)}
                           {item.percentageDiff !== null && (
                             <span className="text-xs ml-1">
                               ({Number(item.percentageDiff) > 0 ? "+" : ""}

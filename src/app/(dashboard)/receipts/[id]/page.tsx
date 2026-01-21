@@ -401,7 +401,7 @@ export default function ReceiptDetailPage() {
             {receipt.totalAmount && (
               <>
                 <span>•</span>
-                <span>Total: {formatPrice(receipt.totalAmount, receipt.currency || "USD")}</span>
+                <span>Total: {formatPrice(Number(receipt.totalAmount), receipt.currency || "USD")}</span>
               </>
             )}
             <span>•</span>
@@ -673,9 +673,9 @@ export default function ReceiptDetailPage() {
                           <TableCell className="text-muted-foreground">{index + 1}</TableCell>
                           <TableCell className="font-medium">{item.productName}</TableCell>
                           <TableCell>{Number(item.quantity)}</TableCell>
-                          <TableCell>{formatPrice(item.unitPrice, receipt.currency || "USD")}</TableCell>
+                          <TableCell>{formatPrice(Number(item.unitPrice), receipt.currency || "USD")}</TableCell>
                           <TableCell className="font-medium">
-                            {formatPrice(item.totalPrice, receipt.currency || "USD")}
+                            {formatPrice(Number(item.totalPrice), receipt.currency || "USD")}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
@@ -712,7 +712,7 @@ export default function ReceiptDetailPage() {
             <div className="flex justify-end mt-4 pt-4 border-t">
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">Grand Total</p>
-                <p className="text-2xl font-bold">{formatPrice(receipt.totalAmount, receipt.currency || "USD")}</p>
+                <p className="text-2xl font-bold">{formatPrice(Number(receipt.totalAmount), receipt.currency || "USD")}</p>
               </div>
             </div>
           )}
