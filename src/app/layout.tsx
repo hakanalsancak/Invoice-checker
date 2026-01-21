@@ -13,9 +13,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Invoice Check - AI-Powered Price Verification",
+  title: "Check Up Invoice - AI-Powered Price Verification",
   description: "Automatically verify prices on receipts and invoices against your agreed catalogues. Supports Turkish and other languages. Detect overcharges instantly.",
   keywords: ["invoice verification", "price checking", "supplier management", "Turkish", "AI"],
+  icons: {
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
+  },
 };
 
 export default function RootLayout({

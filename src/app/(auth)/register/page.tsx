@@ -6,7 +6,7 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, FileCheck } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,13 +71,11 @@ export default function RegisterPage() {
     <Card className="border-0 shadow-2xl bg-card/95 backdrop-blur">
       <CardHeader className="space-y-1 text-center">
         <div className="flex justify-center mb-4">
-          <div className="p-3 rounded-xl bg-primary/10">
-            <FileCheck className="h-8 w-8 text-primary" />
-          </div>
+          <img src="/Main logo.png" alt="Check Up Invoice" className="h-16 w-auto object-contain" />
         </div>
         <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
         <CardDescription>
-          Get started with Invoice Check
+          Get started with Check Up Invoice
         </CardDescription>
       </CardHeader>
       <CardContent>

@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import Link from "next/link";
 import {
-  FileCheck,
   ArrowRight,
   Upload,
   Brain,
@@ -30,10 +29,7 @@ export default async function HomePage() {
         {/* Navigation */}
         <nav className="relative z-10 flex items-center justify-between px-6 py-4 lg:px-12">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <FileCheck className="h-6 w-6 text-primary" />
-            </div>
-            <span className="text-xl font-bold text-white">Invoice Check</span>
+            <img src="/Main logo.png" alt="Check Up Invoice" className="h-12 w-auto object-contain" />
           </div>
           <div className="flex items-center gap-4">
             <Button variant="ghost" asChild className="text-white hover:text-white hover:bg-white/10">
@@ -241,11 +237,10 @@ export default async function HomePage() {
       <footer className="bg-slate-950 border-t border-white/10 py-8">
         <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <FileCheck className="h-5 w-5 text-primary" />
-            <span className="font-semibold text-white">Invoice Check</span>
+            <img src="/Main logo.png" alt="Check Up Invoice" className="h-10 w-auto object-contain" />
           </div>
           <p className="text-sm text-white/50">
-            © {new Date().getFullYear()} Invoice Check. All rights reserved.
+            © {new Date().getFullYear()} Check Up Invoice. All rights reserved.
           </p>
         </div>
       </footer>

@@ -10,7 +10,6 @@ import {
   BarChart3,
   Settings,
   LogOut,
-  FileCheck,
   Menu,
   X,
 } from "lucide-react";
@@ -54,14 +53,8 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="p-6 border-b border-border/50">
-        <Link href="/dashboard" className="flex items-center gap-3" onClick={onNavigate}>
-          <div className="p-2 rounded-lg bg-primary/10">
-            <FileCheck className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="font-bold text-lg">Invoice Check</h1>
-            <p className="text-xs text-muted-foreground">Price Verification</p>
-          </div>
+        <Link href="/dashboard" className="flex items-center justify-center" onClick={onNavigate}>
+          <img src="/Main logo.png" alt="Check Up Invoice" className="h-14 w-auto object-contain" />
         </Link>
       </div>
 
