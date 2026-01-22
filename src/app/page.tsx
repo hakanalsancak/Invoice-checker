@@ -66,7 +66,7 @@ export default async function HomePage() {
           {/* Main Headline */}
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1] animate-fade-in-up [animation-delay:100ms]">
             Stop Overpaying
-            <span className="block mt-2 bg-gradient-to-r from-blue-400 via-violet-400 to-emerald-400 bg-clip-text text-transparent">
+            <span className="block mt-2 pb-2 bg-gradient-to-r from-blue-400 via-violet-400 to-emerald-400 bg-clip-text text-transparent">
               On Every Invoice
             </span>
           </h1>
@@ -294,7 +294,7 @@ export default async function HomePage() {
             <div className="relative">
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold">
                 Ready to Stop
-                <span className="block mt-2 bg-gradient-to-r from-blue-400 via-violet-400 to-emerald-400 bg-clip-text text-transparent">
+                <span className="block mt-2 pb-2 bg-gradient-to-r from-blue-400 via-violet-400 to-emerald-400 bg-clip-text text-transparent">
                   Losing Money?
                 </span>
               </h2>
