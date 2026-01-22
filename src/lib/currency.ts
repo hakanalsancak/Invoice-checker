@@ -30,7 +30,8 @@ export const SUPPORTED_CURRENCIES = [
 ] as const;
 
 // Build lookup maps for quick access
-const CURRENCY_MAP = new Map(SUPPORTED_CURRENCIES.map(c => [c.code, c]));
+type CurrencyInfo = typeof SUPPORTED_CURRENCIES[number];
+const CURRENCY_MAP = new Map<string, CurrencyInfo>(SUPPORTED_CURRENCIES.map(c => [c.code, c]));
 
 // Cache for exchange rates (to avoid too many API calls)
 let ratesCache: {
