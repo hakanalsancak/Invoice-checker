@@ -464,19 +464,28 @@ export default function ReceiptDetailPage() {
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-[400px] p-0" align="start">
-                      <Command>
+                      <Command shouldFilter={true}>
                         <CommandInput placeholder="Search products..." />
                         <CommandList className="max-h-64">
                           <CommandEmpty>No products found.</CommandEmpty>
-                          {linkedCatalogues.map(catalogue => (
-                            <CommandGroup key={catalogue.id} heading={catalogue.name}>
-                              {catalogueItems
-                                ?.filter(item => item.catalogueId === catalogue.id)
-                                .map(item => (
+                          {linkedCatalogues.map(catalogue => {
+                            const catalogueItemsForGroup = catalogueItems?.filter(
+                              item => item.catalogueId === catalogue.id
+                            ) || [];
+                            if (catalogueItemsForGroup.length === 0) return null;
+                            return (
+                              <CommandGroup key={catalogue.id} heading={catalogue.name}>
+                                {catalogueItemsForGroup.map(item => (
                                   <CommandItem
                                     key={item.id}
-                                    value={item.productName}
-                                    onSelect={() => handleProductSelect(item)}
+                                    value={`${item.id}__${item.productName}`}
+                                    onSelect={(currentValue) => {
+                                      const itemId = currentValue.split("__")[0];
+                                      const selectedItem = catalogueItems?.find(i => i.id === itemId);
+                                      if (selectedItem) {
+                                        handleProductSelect(selectedItem);
+                                      }
+                                    }}
                                     className="cursor-pointer"
                                   >
                                     <div className="flex-1">
@@ -488,8 +497,9 @@ export default function ReceiptDetailPage() {
                                     </div>
                                   </CommandItem>
                                 ))}
-                            </CommandGroup>
-                          ))}
+                              </CommandGroup>
+                            );
+                          })}
                         </CommandList>
                       </Command>
                     </PopoverContent>

@@ -1,5 +1,4 @@
 import { db } from "@/lib/db";
-import { matchProducts } from "@/services/ai/productMatcher";
 import { ComparisonStatus, MatchConfidence } from "@/types";
 import { getExchangeRate } from "@/lib/currency";
 
@@ -66,20 +65,8 @@ export async function compareReceiptWithCatalogue(
 
   console.log(`Comparing: Receipt (${receiptCurrency}) vs Catalogue (${catalogueCurrency}), Rate: ${exchangeRate}`);
 
-  // Match products
-  const matches = await matchProducts(
-    receipt.items.map(item => ({
-      id: item.id,
-      productName: item.productName,
-    })),
-    catalogue.items.map(item => ({
-      id: item.id,
-      productName: item.productName,
-      sku: item.sku,
-    }))
-  );
-
-  // Build comparison results
+  // Build comparison results using direct catalogueItemId from receipt items
+  // (Users manually select catalogue items when creating receipt items)
   const comparisonItems: ComparisonItemResult[] = [];
   let matchedCount = 0;
   let mismatchCount = 0;
@@ -87,14 +74,16 @@ export async function compareReceiptWithCatalogue(
   let totalUndercharge = 0;
 
   for (const receiptItem of receipt.items) {
-    const match = matches.get(receiptItem.id);
     const receiptPrice = Number(receiptItem.unitPrice);
     
     // Convert receipt price to catalogue currency using the fetched exchange rate
     const receiptPriceConverted = receiptPrice * exchangeRate;
     
-    if (!match) {
-      // No match found
+    // Use the direct catalogueItemId from the receipt item (user-selected)
+    const catalogueItemId = receiptItem.catalogueItemId;
+    
+    if (!catalogueItemId) {
+      // No catalogue item linked
       comparisonItems.push({
         receiptItemId: receiptItem.id,
         catalogueItemId: null,
@@ -110,18 +99,18 @@ export async function compareReceiptWithCatalogue(
       continue;
     }
 
-    const catalogueItem = match.catalogueItemId
-      ? catalogue.items.find(c => c.id === match.catalogueItemId)
-      : null;
-
+    const catalogueItem = catalogue.items.find(c => c.id === catalogueItemId);
     const cataloguePrice = catalogueItem ? Number(catalogueItem.price) : null;
 
     let priceDifference: number | null = null;
     let percentageDiff: number | null = null;
     let status: ComparisonStatus = "UNMATCHED";
+    let matchConfidence: MatchConfidence = "UNMATCHED";
 
     if (cataloguePrice !== null) {
       matchedCount++;
+      matchConfidence = "HIGH"; // User manually matched, so confidence is always high
+      
       // Compare CONVERTED receipt price with catalogue price
       priceDifference = receiptPriceConverted - cataloguePrice;
       percentageDiff = cataloguePrice > 0 
@@ -145,14 +134,14 @@ export async function compareReceiptWithCatalogue(
 
     comparisonItems.push({
       receiptItemId: receiptItem.id,
-      catalogueItemId: match.catalogueItemId,
+      catalogueItemId,
       receiptPrice,
       receiptPriceConverted: Math.round(receiptPriceConverted * 100) / 100,
       cataloguePrice,
       priceDifference: priceDifference !== null ? Math.round(priceDifference * 100) / 100 : null,
       percentageDiff: percentageDiff !== null ? Math.round(percentageDiff * 100) / 100 : null,
       exchangeRate,
-      matchConfidence: match.confidence,
+      matchConfidence,
       status,
     });
   }
