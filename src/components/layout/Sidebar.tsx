@@ -30,8 +30,8 @@ const navItems = [
     icon: FileText,
   },
   {
-    title: "Receipts",
-    href: "/receipts",
+    title: "Invoices",
+    href: "/invoices",
     icon: Receipt,
   },
   {

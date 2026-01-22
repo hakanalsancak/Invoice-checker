@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Plus, Receipt as ReceiptIcon, MoreHorizontal, Trash2, Eye, FileCheck, Loader2 } from "lucide-react";
+import { Plus, FileText, MoreHorizontal, Trash2, Eye, FileCheck, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -29,11 +29,11 @@ import {
 import { TableSkeleton } from "@/components/shared/LoadingStates";
 import { formatPrice } from "@/lib/currency";
 
-interface ReceiptData {
+interface InvoiceData {
   id: string;
   supplierName: string | null;
   originalFileName: string;
-  receiptDate: string | null;
+  invoiceDate: string | null;
   totalAmount: number | null;
   language: string;
   currency: string;
@@ -44,15 +44,15 @@ interface ReceiptData {
   };
 }
 
-async function fetchReceipts(): Promise<ReceiptData[]> {
-  const response = await fetch("/api/receipts");
+async function fetchInvoices(): Promise<InvoiceData[]> {
+  const response = await fetch("/api/invoices");
   const data = await response.json();
   if (!data.success) throw new Error(data.error);
   return data.data;
 }
 
-async function deleteReceipt(id: string): Promise<void> {
-  const response = await fetch(`/api/receipts/${id}`, {
+async function deleteInvoice(id: string): Promise<void> {
+  const response = await fetch(`/api/invoices/${id}`, {
     method: "DELETE",
   });
   const data = await response.json();
@@ -70,22 +70,22 @@ function StatusBadge({ status }: { status: string }) {
   return <Badge variant={variant}>{label}</Badge>;
 }
 
-export default function ReceiptsPage() {
+export default function InvoicesPage() {
   const queryClient = useQueryClient();
 
-  const { data: receipts, isLoading, error } = useQuery({
-    queryKey: ["receipts"],
-    queryFn: fetchReceipts,
+  const { data: invoices, isLoading, error } = useQuery({
+    queryKey: ["invoices"],
+    queryFn: fetchInvoices,
   });
 
   const deleteMutation = useMutation({
-    mutationFn: deleteReceipt,
+    mutationFn: deleteInvoice,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["receipts"] });
-      toast.success("Receipt deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      toast.success("Invoice deleted successfully");
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to delete receipt");
+      toast.error(error.message || "Failed to delete invoice");
     },
   });
 
@@ -94,8 +94,8 @@ export default function ReceiptsPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Receipts</h1>
-            <p className="text-muted-foreground">Manage your receipts and invoices</p>
+            <h1 className="text-3xl font-bold tracking-tight">Invoices</h1>
+            <p className="text-muted-foreground">Manage your invoices</p>
           </div>
         </div>
         <Card>
@@ -110,7 +110,7 @@ export default function ReceiptsPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Failed to load receipts</p>
+        <p className="text-muted-foreground">Failed to load invoices</p>
       </div>
     );
   }
@@ -120,50 +120,50 @@ export default function ReceiptsPage() {
       {/* Page header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Receipts</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Invoices</h1>
           <p className="text-muted-foreground">
-            Manage and verify your receipts and invoices
+            Manage and verify your invoices
           </p>
         </div>
         <Button asChild>
-          <Link href="/receipts/create">
+          <Link href="/invoices/create">
             <Plus className="mr-2 h-4 w-4" />
-            Create Receipt
+            Create Invoice
           </Link>
         </Button>
       </div>
 
-      {/* Receipts list */}
-      {receipts && receipts.length === 0 ? (
+      {/* Invoices list */}
+      {invoices && invoices.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <div className="p-4 rounded-full bg-muted mb-4">
-              <ReceiptIcon className="h-8 w-8 text-muted-foreground" />
+              <FileText className="h-8 w-8 text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">No receipts yet</h3>
+            <h3 className="text-lg font-semibold mb-2">No invoices yet</h3>
             <p className="text-muted-foreground text-center mb-4">
-              Create your first receipt to start verifying prices
+              Create your first invoice to start verifying prices
             </p>
             <Button asChild>
-              <Link href="/receipts/create">
+              <Link href="/invoices/create">
                 <Plus className="mr-2 h-4 w-4" />
-                Create Receipt
+                Create Invoice
               </Link>
             </Button>
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {receipts?.map((receipt) => (
-            <Card key={receipt.id} className="hover:shadow-md transition-shadow">
+          {invoices?.map((invoice) => (
+            <Card key={invoice.id} className="hover:shadow-md transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     <CardTitle className="text-lg line-clamp-1">
-                      {receipt.supplierName || "Unknown Supplier"}
+                      {invoice.supplierName || "Unknown Supplier"}
                     </CardTitle>
                     <CardDescription className="line-clamp-1">
-                      {receipt.originalFileName}
+                      {invoice.originalFileName}
                     </CardDescription>
                   </div>
                   <DropdownMenu>
@@ -174,14 +174,14 @@ export default function ReceiptsPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild>
-                        <Link href={`/receipts/${receipt.id}`}>
+                        <Link href={`/invoices/${invoice.id}`}>
                           <Eye className="mr-2 h-4 w-4" />
                           View Details
                         </Link>
                       </DropdownMenuItem>
-                      {receipt.status === "COMPLETED" && (
+                      {invoice.status === "COMPLETED" && (
                         <DropdownMenuItem asChild>
-                          <Link href={`/receipts/${receipt.id}?verify=true`}>
+                          <Link href={`/invoices/${invoice.id}?verify=true`}>
                             <FileCheck className="mr-2 h-4 w-4" />
                             Verify Prices
                           </Link>
@@ -199,16 +199,16 @@ export default function ReceiptsPage() {
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Receipt</AlertDialogTitle>
+                            <AlertDialogTitle>Delete Invoice</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Are you sure you want to delete this receipt? This
+                              Are you sure you want to delete this invoice? This
                               action cannot be undone.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction
-                              onClick={() => deleteMutation.mutate(receipt.id)}
+                              onClick={() => deleteMutation.mutate(invoice.id)}
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             >
                               {deleteMutation.isPending ? (
@@ -228,32 +228,32 @@ export default function ReceiptsPage() {
                 <div className="flex items-center justify-between mb-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <StatusBadge status={receipt.status} />
+                      <StatusBadge status={invoice.status} />
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {receipt._count.items} items
+                      {invoice._count.items} items
                     </p>
                   </div>
                   <div className="text-right">
-                    {receipt.totalAmount && (
+                    {invoice.totalAmount && (
                       <p className="font-semibold">
-                        {formatPrice(receipt.totalAmount, receipt.currency || "USD")}
+                        {formatPrice(invoice.totalAmount, invoice.currency || "USD")}
                       </p>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      {receipt.receiptDate
-                        ? format(new Date(receipt.receiptDate), "MMM d, yyyy")
-                        : format(new Date(receipt.createdAt), "MMM d, yyyy")}
+                      {invoice.invoiceDate
+                        ? format(new Date(invoice.invoiceDate), "MMM d, yyyy")
+                        : format(new Date(invoice.createdAt), "MMM d, yyyy")}
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-2">
                   <Button asChild variant="outline" className="flex-1">
-                    <Link href={`/receipts/${receipt.id}`}>View Details</Link>
+                    <Link href={`/invoices/${invoice.id}`}>View Details</Link>
                   </Button>
-                  {receipt.status === "COMPLETED" && (
+                  {invoice.status === "COMPLETED" && (
                     <Button asChild className="flex-1">
-                      <Link href={`/receipts/${receipt.id}?verify=true`}>
+                      <Link href={`/invoices/${invoice.id}?verify=true`}>
                         <FileCheck className="mr-2 h-4 w-4" />
                         Verify
                       </Link>

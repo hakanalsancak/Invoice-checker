@@ -3,10 +3,10 @@ import { ComparisonStatus, MatchConfidence } from "@/types";
 import { getExchangeRate } from "@/lib/currency";
 
 interface ComparisonItemResult {
-  receiptItemId: string;
+  invoiceItemId: string;
   catalogueItemId: string | null;
-  receiptPrice: number; // Original price in receipt currency
-  receiptPriceConverted: number | null; // Converted to catalogue currency
+  invoicePrice: number; // Original price in invoice currency
+  invoicePriceConverted: number | null; // Converted to catalogue currency
   cataloguePrice: number | null; // Price in catalogue currency
   priceDifference: number | null; // Difference (converted - catalogue)
   percentageDiff: number | null;
@@ -21,19 +21,19 @@ interface ComparisonResult {
   mismatches: number;
   totalOvercharge: number;
   totalUndercharge: number;
-  receiptCurrency: string;
+  invoiceCurrency: string;
   catalogueCurrency: string;
   exchangeRate: number;
   items: ComparisonItemResult[];
 }
 
-export async function compareReceiptWithCatalogue(
-  receiptId: string,
+export async function compareInvoiceWithCatalogue(
+  invoiceId: string,
   catalogueId: string
 ): Promise<ComparisonResult> {
-  // Fetch receipt with currency
-  const receipt = await db.receipt.findUnique({
-    where: { id: receiptId },
+  // Fetch invoice with currency
+  const invoice = await db.invoice.findUnique({
+    where: { id: invoiceId },
     include: {
       items: {
         orderBy: { lineNumber: "asc" },
@@ -41,8 +41,8 @@ export async function compareReceiptWithCatalogue(
     },
   });
 
-  if (!receipt) {
-    throw new Error("Receipt not found");
+  if (!invoice) {
+    throw new Error("Invoice not found");
   }
 
   // Fetch catalogue with currency
@@ -59,36 +59,36 @@ export async function compareReceiptWithCatalogue(
     throw new Error("Catalogue not found");
   }
 
-  const receiptCurrency = receipt.currency || "USD";
+  const invoiceCurrency = invoice.currency || "USD";
   const catalogueCurrency = catalogue.currency || "GBP";
-  const exchangeRate = await getExchangeRate(receiptCurrency, catalogueCurrency);
+  const exchangeRate = await getExchangeRate(invoiceCurrency, catalogueCurrency);
 
-  console.log(`Comparing: Receipt (${receiptCurrency}) vs Catalogue (${catalogueCurrency}), Rate: ${exchangeRate}`);
+  console.log(`Comparing: Invoice (${invoiceCurrency}) vs Catalogue (${catalogueCurrency}), Rate: ${exchangeRate}`);
 
-  // Build comparison results using direct catalogueItemId from receipt items
-  // (Users manually select catalogue items when creating receipt items)
+  // Build comparison results using direct catalogueItemId from invoice items
+  // (Users manually select catalogue items when creating invoice items)
   const comparisonItems: ComparisonItemResult[] = [];
   let matchedCount = 0;
   let mismatchCount = 0;
   let totalOvercharge = 0;
   let totalUndercharge = 0;
 
-  for (const receiptItem of receipt.items) {
-    const receiptPrice = Number(receiptItem.unitPrice);
+  for (const invoiceItem of invoice.items) {
+    const invoicePrice = Number(invoiceItem.unitPrice);
     
-    // Convert receipt price to catalogue currency using the fetched exchange rate
-    const receiptPriceConverted = receiptPrice * exchangeRate;
+    // Convert invoice price to catalogue currency using the fetched exchange rate
+    const invoicePriceConverted = invoicePrice * exchangeRate;
     
-    // Use the direct catalogueItemId from the receipt item (user-selected)
-    const catalogueItemId = receiptItem.catalogueItemId;
+    // Use the direct catalogueItemId from the invoice item (user-selected)
+    const catalogueItemId = invoiceItem.catalogueItemId;
     
     if (!catalogueItemId) {
       // No catalogue item linked
       comparisonItems.push({
-        receiptItemId: receiptItem.id,
+        invoiceItemId: invoiceItem.id,
         catalogueItemId: null,
-        receiptPrice,
-        receiptPriceConverted,
+        invoicePrice,
+        invoicePriceConverted,
         cataloguePrice: null,
         priceDifference: null,
         percentageDiff: null,
@@ -111,8 +111,8 @@ export async function compareReceiptWithCatalogue(
       matchedCount++;
       matchConfidence = "HIGH"; // User manually matched, so confidence is always high
       
-      // Compare CONVERTED receipt price with catalogue price
-      priceDifference = receiptPriceConverted - cataloguePrice;
+      // Compare CONVERTED invoice price with catalogue price
+      priceDifference = invoicePriceConverted - cataloguePrice;
       percentageDiff = cataloguePrice > 0 
         ? ((priceDifference / cataloguePrice) * 100)
         : 0;
@@ -123,20 +123,20 @@ export async function compareReceiptWithCatalogue(
       } else if (priceDifference > 0) {
         status = "OVERCHARGE";
         // Calculate total overcharge based on quantity (in catalogue currency)
-        totalOvercharge += priceDifference * Number(receiptItem.quantity);
+        totalOvercharge += priceDifference * Number(invoiceItem.quantity);
         mismatchCount++;
       } else {
         status = "UNDERCHARGE";
-        totalUndercharge += Math.abs(priceDifference) * Number(receiptItem.quantity);
+        totalUndercharge += Math.abs(priceDifference) * Number(invoiceItem.quantity);
         mismatchCount++;
       }
     }
 
     comparisonItems.push({
-      receiptItemId: receiptItem.id,
+      invoiceItemId: invoiceItem.id,
       catalogueItemId,
-      receiptPrice,
-      receiptPriceConverted: Math.round(receiptPriceConverted * 100) / 100,
+      invoicePrice,
+      invoicePriceConverted: Math.round(invoicePriceConverted * 100) / 100,
       cataloguePrice,
       priceDifference: priceDifference !== null ? Math.round(priceDifference * 100) / 100 : null,
       percentageDiff: percentageDiff !== null ? Math.round(percentageDiff * 100) / 100 : null,
@@ -147,12 +147,12 @@ export async function compareReceiptWithCatalogue(
   }
 
   return {
-    totalItems: receipt.items.length,
+    totalItems: invoice.items.length,
     matchedItems: matchedCount,
     mismatches: mismatchCount,
     totalOvercharge: Math.round(totalOvercharge * 100) / 100,
     totalUndercharge: Math.round(totalUndercharge * 100) / 100,
-    receiptCurrency,
+    invoiceCurrency,
     catalogueCurrency,
     exchangeRate,
     items: comparisonItems,
@@ -160,17 +160,17 @@ export async function compareReceiptWithCatalogue(
 }
 
 export async function createComparisonReport(
-  receiptId: string,
+  invoiceId: string,
   catalogueId: string,
   userId: string
 ): Promise<string> {
   // Verify ownership
-  const receipt = await db.receipt.findFirst({
-    where: { id: receiptId, userId },
+  const invoice = await db.invoice.findFirst({
+    where: { id: invoiceId, userId },
   });
 
-  if (!receipt) {
-    throw new Error("Receipt not found or access denied");
+  if (!invoice) {
+    throw new Error("Invoice not found or access denied");
   }
 
   const catalogue = await db.catalogue.findFirst({
@@ -182,27 +182,27 @@ export async function createComparisonReport(
   }
 
   // Perform comparison (with currency conversion)
-  const comparison = await compareReceiptWithCatalogue(receiptId, catalogueId);
+  const comparison = await compareInvoiceWithCatalogue(invoiceId, catalogueId);
 
   // Create report in database with currency info
   const report = await db.comparisonReport.create({
     data: {
-      receiptId,
+      invoiceId,
       catalogueId,
       totalItems: comparison.totalItems,
       matchedItems: comparison.matchedItems,
       mismatches: comparison.mismatches,
       totalOvercharge: comparison.totalOvercharge,
       totalUndercharge: comparison.totalUndercharge,
-      receiptCurrency: comparison.receiptCurrency,
+      invoiceCurrency: comparison.invoiceCurrency,
       catalogueCurrency: comparison.catalogueCurrency,
       exchangeRate: comparison.exchangeRate,
       items: {
         create: comparison.items.map(item => ({
-          receiptItemId: item.receiptItemId,
+          invoiceItemId: item.invoiceItemId,
           catalogueItemId: item.catalogueItemId,
-          receiptPrice: item.receiptPrice,
-          receiptPriceConverted: item.receiptPriceConverted,
+          invoicePrice: item.invoicePrice,
+          invoicePriceConverted: item.invoicePriceConverted,
           cataloguePrice: item.cataloguePrice,
           priceDifference: item.priceDifference,
           percentageDiff: item.percentageDiff,

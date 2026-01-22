@@ -53,11 +53,11 @@ export default function DashboardPage() {
       bgColor: "bg-blue-500/10",
     },
     {
-      title: "Receipts",
-      value: stats.totalReceipts,
-      description: "Receipts created",
+      title: "Invoices",
+      value: stats.totalInvoices,
+      description: "Invoices created",
       icon: Receipt,
-      href: "/receipts",
+      href: "/invoices",
       color: "text-emerald-500",
       bgColor: "bg-emerald-500/10",
     },
@@ -85,7 +85,7 @@ export default function DashboardPage() {
     switch (type) {
       case "catalogue":
         return <FileText className="h-4 w-4 text-blue-500" />;
-      case "receipt":
+      case "invoice":
         return <Receipt className="h-4 w-4 text-emerald-500" />;
       case "report":
         return <BarChart3 className="h-4 w-4 text-purple-500" />;
@@ -98,8 +98,8 @@ export default function DashboardPage() {
     switch (type) {
       case "catalogue":
         return `/catalogues/${id}`;
-      case "receipt":
-        return `/receipts/${id}`;
+      case "invoice":
+        return `/invoices/${id}`;
       case "report":
         return `/reports/${id}`;
       default:
@@ -119,9 +119,9 @@ export default function DashboardPage() {
         </div>
         <div className="flex gap-2">
           <Button asChild variant="outline">
-            <Link href="/receipts/create">
+            <Link href="/invoices/create">
               <Plus className="mr-2 h-4 w-4" />
-              New Receipt
+              New Invoice
             </Link>
           </Button>
           <Button asChild>
@@ -185,7 +185,7 @@ export default function DashboardPage() {
             </Link>
 
             <Link
-              href="/receipts/create"
+              href="/invoices/create"
               className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent transition-colors"
             >
               <div className="flex items-center gap-3">
@@ -193,7 +193,7 @@ export default function DashboardPage() {
                   <Receipt className="h-5 w-5 text-emerald-500" />
                 </div>
                 <div>
-                  <p className="font-medium">Create Receipt</p>
+                  <p className="font-medium">Create Invoice</p>
                   <p className="text-sm text-muted-foreground">
                     Add items to verify prices
                   </p>
@@ -233,7 +233,7 @@ export default function DashboardPage() {
               <div className="text-center py-8">
                 <p className="text-muted-foreground">No recent activity</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Create a catalogue or receipt to get started
+                  Create a catalogue or invoice to get started
                 </p>
               </div>
             ) : (

@@ -38,7 +38,7 @@ model User {
   updatedAt     DateTime    @updatedAt
   
   catalogues    Catalogue[]
-  receipts      Receipt[]
+  invoices      Invoice[]
 }
 
 model Catalogue {
@@ -56,7 +56,7 @@ model Catalogue {
   user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   items            CatalogueItem[]
   reports          ComparisonReport[]
-  receipts         ReceiptCatalogue[] // Receipts linked to this catalogue
+  invoices         InvoiceCatalogue[] // Invoices linked to this catalogue
   
   @@index([userId])
 }
@@ -75,19 +75,19 @@ model CatalogueItem {
   
   catalogue       Catalogue       @relation(fields: [catalogueId], references: [id], onDelete: Cascade)
   comparisonItems ComparisonItem[]
-  receiptItems    ReceiptItem[]   // Receipt items linked to this catalogue item
+  invoiceItems    InvoiceItem[]   // Invoice items linked to this catalogue item
   
   @@index([catalogueId])
   @@index([productName])
 }
 
-model Receipt {
+model Invoice {
   id               String           @id @default(cuid())
   userId           String
   supplierName     String?
   originalFileName String
   fileUrl          String?
-  receiptDate      DateTime?
+  invoiceDate      DateTime?
   totalAmount      Decimal?         @db.Decimal(12, 2)
   language         String           @default("tr")
   currency         String           @default("USD") // ISO currency code
@@ -95,31 +95,31 @@ model Receipt {
   createdAt        DateTime         @default(now())
   
   user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items            ReceiptItem[]
+  items            InvoiceItem[]
   reports          ComparisonReport[]
-  catalogues       ReceiptCatalogue[] // Linked catalogues for this receipt
+  catalogues       InvoiceCatalogue[] // Linked catalogues for this invoice
   
   @@index([userId])
 }
 
-// Join table for Receipt-Catalogue many-to-many relationship
-model ReceiptCatalogue {
+// Join table for Invoice-Catalogue many-to-many relationship
+model InvoiceCatalogue {
   id          String    @id @default(cuid())
-  receiptId   String
+  invoiceId   String
   catalogueId String
   createdAt   DateTime  @default(now())
   
-  receipt     Receipt   @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  invoice     Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   catalogue   Catalogue @relation(fields: [catalogueId], references: [id], onDelete: Cascade)
   
-  @@unique([receiptId, catalogueId])
-  @@index([receiptId])
+  @@unique([invoiceId, catalogueId])
+  @@index([invoiceId])
   @@index([catalogueId])
 }
 
-model ReceiptItem {
+model InvoiceItem {
   id              String         @id @default(cuid())
-  receiptId       String
+  invoiceId       String
   catalogueItemId String?        // Direct link to catalogue item
   productName     String
   rawText         String?
@@ -129,43 +129,43 @@ model ReceiptItem {
   totalPrice      Decimal        @db.Decimal(12, 2)
   lineNumber      Int
   
-  receipt         Receipt        @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  invoice         Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   catalogueItem   CatalogueItem? @relation(fields: [catalogueItemId], references: [id], onDelete: SetNull)
   comparisonItems ComparisonItem[]
   
-  @@index([receiptId])
+  @@index([invoiceId])
   @@index([catalogueItemId])
 }
 
 model ComparisonReport {
   id               String   @id @default(cuid())
-  receiptId        String
+  invoiceId        String
   catalogueId      String
   totalItems       Int
   matchedItems     Int
   mismatches       Int
   totalOvercharge  Decimal  @db.Decimal(12, 2) @default(0)
   totalUndercharge Decimal  @db.Decimal(12, 2) @default(0)
-  receiptCurrency  String   @default("USD") // Currency of the receipt
+  invoiceCurrency  String   @default("USD") // Currency of the invoice
   catalogueCurrency String  @default("GBP") // Currency of the catalogue
   exchangeRate     Decimal? @db.Decimal(10, 6) // Exchange rate used for comparison
   createdAt        DateTime @default(now())
   
-  receipt         Receipt  @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   catalogue       Catalogue @relation(fields: [catalogueId], references: [id], onDelete: Cascade)
   items           ComparisonItem[]
   
-  @@index([receiptId])
+  @@index([invoiceId])
   @@index([catalogueId])
 }
 
 model ComparisonItem {
   id                    String           @id @default(cuid())
   reportId              String
-  receiptItemId         String
+  invoiceItemId         String
   catalogueItemId       String?
-  receiptPrice          Decimal          @db.Decimal(12, 2) // Original price in receipt currency
-  receiptPriceConverted Decimal?         @db.Decimal(12, 2) // Converted to catalogue currency
+  invoicePrice          Decimal          @db.Decimal(12, 2) // Original price in invoice currency
+  invoicePriceConverted Decimal?         @db.Decimal(12, 2) // Converted to catalogue currency
   cataloguePrice        Decimal?         @db.Decimal(12, 2) // Price in catalogue currency
   priceDifference       Decimal?         @db.Decimal(12, 2) // Difference after conversion
   percentageDiff        Decimal?         @db.Decimal(8, 2)
@@ -174,7 +174,7 @@ model ComparisonItem {
   status                ComparisonStatus @default(UNMATCHED)
   
   report          ComparisonReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  receiptItem     ReceiptItem      @relation(fields: [receiptItemId], references: [id], onDelete: Cascade)
+  invoiceItem     InvoiceItem      @relation(fields: [invoiceItemId], references: [id], onDelete: Cascade)
   catalogueItem   CatalogueItem?   @relation(fields: [catalogueItemId], references: [id], onDelete: SetNull)
   
   @@index([reportId])

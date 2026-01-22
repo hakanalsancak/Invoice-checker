@@ -54,7 +54,7 @@ export default async function HomePage() {
           </h1>
 
           <p className="mt-6 text-lg text-white/70 max-w-2xl mx-auto">
-            Automatically verify prices on receipts and invoices against your
+            Automatically verify prices on invoices against your
             agreed catalogues. Supports Turkish and other languages. Detect
             overcharges instantly.
           </p>
@@ -113,10 +113,10 @@ export default async function HomePage() {
                 <Brain className="h-6 w-6 text-emerald-400" />
               </div>
               <h3 className="text-xl font-semibold text-white mb-3">
-                2. Scan Receipts
+                2. Add Invoices
               </h3>
               <p className="text-white/60">
-                Upload invoices or receipts. AI reads every line item and matches
+                Create invoices and add items. The system matches
                 products intelligently, even with name variations.
               </p>
             </div>

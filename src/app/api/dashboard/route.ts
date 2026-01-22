@@ -17,15 +17,15 @@ export async function GET(request: NextRequest) {
     const userId = session.user.id;
 
     // Get counts
-    const [catalogueCount, receiptCount, reportCount] = await Promise.all([
+    const [catalogueCount, invoiceCount, reportCount] = await Promise.all([
       db.catalogue.count({ where: { userId } }),
-      db.receipt.count({ where: { userId } }),
-      db.comparisonReport.count({ where: { receipt: { userId } } }),
+      db.invoice.count({ where: { userId } }),
+      db.comparisonReport.count({ where: { invoice: { userId } } }),
     ]);
 
     // Get total overcharges detected (savings)
     const reports = await db.comparisonReport.findMany({
-      where: { receipt: { userId } },
+      where: { invoice: { userId } },
       select: { totalOvercharge: true },
     });
 
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     );
 
     // Get recent activity
-    const [recentCatalogues, recentReceipts, recentReports] = await Promise.all([
+    const [recentCatalogues, recentInvoices, recentReports] = await Promise.all([
       db.catalogue.findMany({
         where: { userId },
         orderBy: { createdAt: "desc" },
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
           _count: { select: { items: true } },
         },
       }),
-      db.receipt.findMany({
+      db.invoice.findMany({
         where: { userId },
         orderBy: { createdAt: "desc" },
         take: 3,
@@ -61,14 +61,14 @@ export async function GET(request: NextRequest) {
         },
       }),
       db.comparisonReport.findMany({
-        where: { receipt: { userId } },
+        where: { invoice: { userId } },
         orderBy: { createdAt: "desc" },
         take: 3,
         select: {
           id: true,
           createdAt: true,
           totalOvercharge: true,
-          receipt: {
+          invoice: {
             select: { supplierName: true },
           },
         },
@@ -84,9 +84,9 @@ export async function GET(request: NextRequest) {
         description: `${c._count.items} items • ${c.status}`,
         createdAt: c.createdAt,
       })),
-      ...recentReceipts.map(r => ({
+      ...recentInvoices.map(r => ({
         id: r.id,
-        type: "receipt" as const,
+        type: "invoice" as const,
         title: r.supplierName || r.originalFileName,
         description: r.status,
         createdAt: r.createdAt,
@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
       ...recentReports.map(r => ({
         id: r.id,
         type: "report" as const,
-        title: r.receipt.supplierName || "Comparison Report",
+        title: r.invoice.supplierName || "Comparison Report",
         description: `₺${Number(r.totalOvercharge).toFixed(2)} overcharge detected`,
         createdAt: r.createdAt,
       })),
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
 
     const stats: DashboardStats = {
       totalCatalogues: catalogueCount,
-      totalReceipts: receiptCount,
+      totalInvoices: invoiceCount,
       totalReports: reportCount,
       totalSavingsDetected,
       recentActivity: activities,

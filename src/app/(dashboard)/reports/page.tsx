@@ -44,11 +44,11 @@ interface Report {
   totalOvercharge: number;
   totalUndercharge: number;
   createdAt: string;
-  receipt: {
+  invoice: {
     id: string;
     supplierName: string | null;
     originalFileName: string;
-    receiptDate: string | null;
+    invoiceDate: string | null;
   };
   catalogue: {
     id: string;
@@ -133,10 +133,10 @@ export default function ReportsPage() {
             </div>
             <h3 className="text-lg font-semibold mb-2">No reports yet</h3>
             <p className="text-muted-foreground text-center mb-4">
-              Upload a receipt and verify prices to generate your first report
+              Create an invoice and verify prices to generate your first report
             </p>
             <Button asChild>
-              <Link href="/receipts/upload">Upload Receipt</Link>
+              <Link href="/invoices/create">Create Invoice</Link>
             </Button>
           </CardContent>
         </Card>
@@ -153,7 +153,7 @@ export default function ReportsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Receipt / Supplier</TableHead>
+                    <TableHead>Invoice / Supplier</TableHead>
                     <TableHead>Catalogue</TableHead>
                     <TableHead>Items</TableHead>
                     <TableHead>Overcharge</TableHead>
@@ -172,10 +172,10 @@ export default function ReportsPage() {
                         <TableCell>
                           <div>
                             <p className="font-medium">
-                              {report.receipt.supplierName || "Unknown Supplier"}
+                              {report.invoice.supplierName || "Unknown Supplier"}
                             </p>
                             <p className="text-sm text-muted-foreground truncate max-w-[200px]">
-                              {report.receipt.originalFileName}
+                              {report.invoice.originalFileName}
                             </p>
                           </div>
                         </TableCell>

@@ -113,13 +113,13 @@ export default function ReportDetailPage() {
   const handleDownloadPDF = () => {
     try {
       exportReportToPDF({
-        supplierName: report.receipt.supplierName || "Unknown Supplier",
+        supplierName: report.invoice.supplierName || "Unknown Supplier",
         catalogueName: report.catalogue.name,
-        receiptDate: report.receipt.receiptDate 
-          ? format(new Date(report.receipt.receiptDate), "MMM d, yyyy")
+        invoiceDate: report.invoice.invoiceDate 
+          ? format(new Date(report.invoice.invoiceDate), "MMM d, yyyy")
           : "Not specified",
         reportDate: format(new Date(report.createdAt), "MMM d, yyyy"),
-        receiptCurrency: report.receiptCurrency,
+        invoiceCurrency: report.invoiceCurrency,
         catalogueCurrency: report.catalogueCurrency,
         exchangeRate: report.exchangeRate ? Number(report.exchangeRate) : null,
         totalItems: report.totalItems,
@@ -127,10 +127,10 @@ export default function ReportDetailPage() {
         totalOvercharge: Number(report.totalOvercharge),
         totalUndercharge: Number(report.totalUndercharge),
         items: report.items.map(item => ({
-          productName: item.receiptItem.productName,
-          quantity: Number(item.receiptItem.quantity),
-          receiptPrice: Number(item.receiptPrice),
-          receiptPriceConverted: item.receiptPriceConverted ? Number(item.receiptPriceConverted) : null,
+          productName: item.invoiceItem.productName,
+          quantity: Number(item.invoiceItem.quantity),
+          invoicePrice: Number(item.invoicePrice),
+          invoicePriceConverted: item.invoicePriceConverted ? Number(item.invoicePriceConverted) : null,
           cataloguePrice: item.cataloguePrice ? Number(item.cataloguePrice) : null,
           priceDifference: item.priceDifference ? Number(item.priceDifference) : null,
           percentageDiff: item.percentageDiff ? Number(item.percentageDiff) : null,
@@ -160,21 +160,21 @@ export default function ReportDetailPage() {
             Price Comparison Report
           </h1>
           <div className="flex flex-wrap items-center gap-2 mt-2 text-muted-foreground">
-            <span>{report.receipt.supplierName || "Unknown Supplier"}</span>
+            <span>{report.invoice.supplierName || "Unknown Supplier"}</span>
             <span>•</span>
             <span>vs {report.catalogue.name}</span>
             <span>•</span>
             <span>{format(new Date(report.createdAt), "MMMM d, yyyy")}</span>
           </div>
           {/* Currency conversion info */}
-          {report.receiptCurrency !== report.catalogueCurrency && (
+          {report.invoiceCurrency !== report.catalogueCurrency && (
             <div className="mt-2 text-sm bg-muted/50 px-3 py-2 rounded-md">
               <span className="font-medium">Currency Conversion:</span>{" "}
-              Receipt ({getCurrencySymbol(report.receiptCurrency)} {report.receiptCurrency}) → 
+              Invoice ({getCurrencySymbol(report.invoiceCurrency)} {report.invoiceCurrency}) → 
               Catalogue ({getCurrencySymbol(report.catalogueCurrency)} {report.catalogueCurrency})
               {report.exchangeRate && (
                 <span className="ml-2 text-muted-foreground">
-                  (Rate: 1 {report.receiptCurrency} = {Number(report.exchangeRate).toFixed(4)} {report.catalogueCurrency})
+                  (Rate: 1 {report.invoiceCurrency} = {Number(report.exchangeRate).toFixed(4)} {report.catalogueCurrency})
                 </span>
               )}
             </div>
@@ -310,9 +310,9 @@ export default function ReportDetailPage() {
           <CardTitle>Detailed Comparison</CardTitle>
           <CardDescription>
             Item-by-item price comparison with discrepancies highlighted
-            {report.receiptCurrency !== report.catalogueCurrency && (
+            {report.invoiceCurrency !== report.catalogueCurrency && (
               <span className="block mt-1">
-                Prices converted from {report.receiptCurrency} to {report.catalogueCurrency} for comparison
+                Prices converted from {report.invoiceCurrency} to {report.catalogueCurrency} for comparison
               </span>
             )}
           </CardDescription>
@@ -323,16 +323,16 @@ export default function ReportDetailPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12">Status</TableHead>
-                  <TableHead>Product (Receipt)</TableHead>
+                  <TableHead>Product (Invoice)</TableHead>
                   <TableHead>Product (Catalogue)</TableHead>
                   <TableHead>Qty</TableHead>
                   <TableHead>
-                    Receipt Price
+                    Invoice Price
                     <span className="block text-xs text-muted-foreground font-normal">
-                      ({report.receiptCurrency})
+                      ({report.invoiceCurrency})
                     </span>
                   </TableHead>
-                  {report.receiptCurrency !== report.catalogueCurrency && (
+                  {report.invoiceCurrency !== report.catalogueCurrency && (
                     <TableHead>
                       Converted
                       <span className="block text-xs text-muted-foreground font-normal">
@@ -368,21 +368,21 @@ export default function ReportDetailPage() {
                       <StatusIcon status={item.status} />
                     </TableCell>
                     <TableCell className="font-medium">
-                      {item.receiptItem.productName}
+                      {item.invoiceItem.productName}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {item.catalogueItem?.productName || "-"}
                     </TableCell>
                     <TableCell>
-                      {Number(item.receiptItem.quantity)} {item.receiptItem.unit || ""}
+                      {Number(item.invoiceItem.quantity)} {item.invoiceItem.unit || ""}
                     </TableCell>
                     <TableCell>
-                      {formatPrice(Number(item.receiptPrice), report.receiptCurrency)}
+                      {formatPrice(Number(item.invoicePrice), report.invoiceCurrency)}
                     </TableCell>
-                    {report.receiptCurrency !== report.catalogueCurrency && (
+                    {report.invoiceCurrency !== report.catalogueCurrency && (
                       <TableCell className="text-muted-foreground">
-                        {item.receiptPriceConverted
-                          ? formatPrice(Number(item.receiptPriceConverted), report.catalogueCurrency)
+                        {item.invoicePriceConverted
+                          ? formatPrice(Number(item.invoicePriceConverted), report.catalogueCurrency)
                           : "-"}
                       </TableCell>
                     )}

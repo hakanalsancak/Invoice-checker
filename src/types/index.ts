@@ -27,8 +27,8 @@ export interface CatalogueExtractionResult {
   confidence: number;
 }
 
-// Extracted receipt item from AI
-export interface ExtractedReceiptItem {
+// Extracted invoice item from AI
+export interface ExtractedInvoiceItem {
   lineNumber: number;
   productName: string;
   rawText: string;
@@ -38,11 +38,11 @@ export interface ExtractedReceiptItem {
   totalPrice: number;
 }
 
-// AI extraction result for receipt
-export interface ReceiptExtractionResult {
+// AI extraction result for invoice
+export interface InvoiceExtractionResult {
   supplier: string | null;
   date: string | null;
-  items: ExtractedReceiptItem[];
+  items: ExtractedInvoiceItem[];
   totalAmount: number;
   detectedLanguage: string;
   detectedCurrency?: string; // ISO currency code (USD, GBP, EUR, TRY, etc.)
@@ -94,29 +94,29 @@ export interface CatalogueItemDisplay {
   updatedAt: Date;
 }
 
-// Receipt with items for display
-export interface ReceiptWithItems {
+// Invoice with items for display
+export interface InvoiceWithItems {
   id: string;
   userId: string;
   supplierName: string | null;
   originalFileName: string;
   fileUrl: string | null;
-  receiptDate: Date | null;
+  invoiceDate: Date | null;
   totalAmount: number | PrismaDecimal | null;
   language: string;
   currency: string; // ISO currency code
   status: ProcessingStatus;
   createdAt: Date;
-  items: ReceiptItemDisplay[];
+  items: InvoiceItemDisplay[];
   _count?: {
     items: number;
   };
 }
 
-// Receipt item for display
-export interface ReceiptItemDisplay {
+// Invoice item for display
+export interface InvoiceItemDisplay {
   id: string;
-  receiptId: string;
+  invoiceId: string;
   catalogueItemId: string | null;
   productName: string;
   rawText: string | null;
@@ -135,22 +135,22 @@ export interface ReceiptItemDisplay {
 // Comparison report with details
 export interface ComparisonReportWithDetails {
   id: string;
-  receiptId: string;
+  invoiceId: string;
   catalogueId: string;
   totalItems: number;
   matchedItems: number;
   mismatches: number;
   totalOvercharge: number | PrismaDecimal;
   totalUndercharge: number | PrismaDecimal;
-  receiptCurrency: string; // Currency of the receipt
+  invoiceCurrency: string; // Currency of the invoice
   catalogueCurrency: string; // Currency of the catalogue
   exchangeRate: number | PrismaDecimal | null; // Exchange rate used
   createdAt: Date;
-  receipt: {
+  invoice: {
     id: string;
     supplierName: string | null;
     originalFileName: string;
-    receiptDate: Date | null;
+    invoiceDate: Date | null;
     currency: string;
   };
   catalogue: {
@@ -164,15 +164,15 @@ export interface ComparisonReportWithDetails {
 // Comparison item for display
 export interface ComparisonItemDisplay {
   id: string;
-  receiptPrice: number | PrismaDecimal; // Original price in receipt currency
-  receiptPriceConverted: number | PrismaDecimal | null; // Converted to catalogue currency
+  invoicePrice: number | PrismaDecimal; // Original price in invoice currency
+  invoicePriceConverted: number | PrismaDecimal | null; // Converted to catalogue currency
   cataloguePrice: number | PrismaDecimal | null; // Price in catalogue currency
   priceDifference: number | PrismaDecimal | null; // Difference after conversion
   percentageDiff: number | PrismaDecimal | null;
   exchangeRate: number | PrismaDecimal | null; // Exchange rate used
   matchConfidence: MatchConfidence;
   status: ComparisonStatus;
-  receiptItem: {
+  invoiceItem: {
     productName: string;
     quantity: number | PrismaDecimal;
     unit: string | null;
@@ -187,7 +187,7 @@ export interface ComparisonItemDisplay {
 // Dashboard statistics
 export interface DashboardStats {
   totalCatalogues: number;
-  totalReceipts: number;
+  totalInvoices: number;
   totalReports: number;
   totalSavingsDetected: number;
   recentActivity: ActivityItem[];
@@ -195,7 +195,7 @@ export interface DashboardStats {
 
 export interface ActivityItem {
   id: string;
-  type: "catalogue" | "receipt" | "report";
+  type: "catalogue" | "invoice" | "report";
   title: string;
   description: string;
   createdAt: Date;

@@ -8,15 +8,15 @@ export async function getReportWithDetails(
   const report = await db.comparisonReport.findFirst({
     where: {
       id: reportId,
-      receipt: { userId },
+      invoice: { userId },
     },
     include: {
-      receipt: {
+      invoice: {
         select: {
           id: true,
           supplierName: true,
           originalFileName: true,
-          receiptDate: true,
+          invoiceDate: true,
           currency: true,
         },
       },
@@ -29,7 +29,7 @@ export async function getReportWithDetails(
       },
       items: {
         include: {
-          receiptItem: {
+          invoiceItem: {
             select: {
               productName: true,
               quantity: true,
@@ -45,7 +45,7 @@ export async function getReportWithDetails(
           },
         },
         orderBy: {
-          receiptItem: {
+          invoiceItem: {
             lineNumber: "asc",
           },
         },
@@ -59,11 +59,11 @@ export async function getReportWithDetails(
 
   return {
     ...report,
-    receiptCurrency: report.receiptCurrency || report.receipt.currency || "USD",
+    invoiceCurrency: report.invoiceCurrency || report.invoice.currency || "USD",
     catalogueCurrency: report.catalogueCurrency || report.catalogue.currency || "GBP",
     items: report.items.map(item => ({
       ...item,
-      receiptItem: item.receiptItem,
+      invoiceItem: item.invoiceItem,
       catalogueItem: item.catalogueItem,
     })),
   };
@@ -72,15 +72,15 @@ export async function getReportWithDetails(
 export async function getUserReports(userId: string) {
   return db.comparisonReport.findMany({
     where: {
-      receipt: { userId },
+      invoice: { userId },
     },
     include: {
-      receipt: {
+      invoice: {
         select: {
           id: true,
           supplierName: true,
           originalFileName: true,
-          receiptDate: true,
+          invoiceDate: true,
         },
       },
       catalogue: {
@@ -100,7 +100,7 @@ export async function deleteReport(reportId: string, userId: string): Promise<bo
   const report = await db.comparisonReport.findFirst({
     where: {
       id: reportId,
-      receipt: { userId },
+      invoice: { userId },
     },
   });
 
@@ -139,17 +139,17 @@ export function generateReportSummary(report: ComparisonReportWithDetails) {
 
 // Export report data as CSV
 export function exportReportToCSV(report: ComparisonReportWithDetails): string {
-  const receiptCurrency = report.receiptCurrency || "USD";
+  const invoiceCurrency = report.invoiceCurrency || "USD";
   const catalogueCurrency = report.catalogueCurrency || "GBP";
-  const hasDifferentCurrencies = receiptCurrency !== catalogueCurrency;
+  const hasDifferentCurrencies = invoiceCurrency !== catalogueCurrency;
 
   const headers = [
-    "Product Name (Receipt)",
+    "Product Name (Invoice)",
     "Product Name (Catalogue)",
     "SKU",
     "Quantity",
     "Unit",
-    `Receipt Price (${receiptCurrency})`,
+    `Invoice Price (${invoiceCurrency})`,
     ...(hasDifferentCurrencies ? [`Converted Price (${catalogueCurrency})`] : []),
     `Catalogue Price (${catalogueCurrency})`,
     `Difference (${catalogueCurrency})`,
@@ -160,13 +160,13 @@ export function exportReportToCSV(report: ComparisonReportWithDetails): string {
   ];
 
   const rows = report.items.map(item => [
-    item.receiptItem.productName,
+    item.invoiceItem.productName,
     item.catalogueItem?.productName || "N/A",
     item.catalogueItem?.sku || "N/A",
-    String(item.receiptItem.quantity),
-    item.receiptItem.unit || "N/A",
-    String(item.receiptPrice),
-    ...(hasDifferentCurrencies ? [item.receiptPriceConverted !== null ? String(item.receiptPriceConverted) : "N/A"] : []),
+    String(item.invoiceItem.quantity),
+    item.invoiceItem.unit || "N/A",
+    String(item.invoicePrice),
+    ...(hasDifferentCurrencies ? [item.invoicePriceConverted !== null ? String(item.invoicePriceConverted) : "N/A"] : []),
     item.cataloguePrice !== null ? String(item.cataloguePrice) : "N/A",
     item.priceDifference !== null ? String(item.priceDifference) : "N/A",
     item.percentageDiff !== null ? `${item.percentageDiff}%` : "N/A",
@@ -179,9 +179,9 @@ export function exportReportToCSV(report: ComparisonReportWithDetails): string {
     // Add metadata header
     `# Report ID: ${report.id}`,
     `# Created: ${report.createdAt}`,
-    `# Receipt Currency: ${receiptCurrency}`,
+    `# Invoice Currency: ${invoiceCurrency}`,
     `# Catalogue Currency: ${catalogueCurrency}`,
-    ...(report.exchangeRate ? [`# Exchange Rate: 1 ${receiptCurrency} = ${report.exchangeRate} ${catalogueCurrency}`] : []),
+    ...(report.exchangeRate ? [`# Exchange Rate: 1 ${invoiceCurrency} = ${report.exchangeRate} ${catalogueCurrency}`] : []),
     "",
     headers.join(","),
     ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")),

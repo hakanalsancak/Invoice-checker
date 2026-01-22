@@ -3,9 +3,9 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
-const createReceiptSchema = z.object({
+const createInvoiceSchema = z.object({
   supplierName: z.string().min(1, "Supplier name is required"),
-  receiptDate: z.string().optional(),
+  invoiceDate: z.string().optional(),
   currency: z.string().default("USD"),
   catalogueIds: z.array(z.string()).min(1, "At least one catalogue is required"),
 });
@@ -21,7 +21,7 @@ export async function GET() {
       );
     }
 
-    const receipts = await db.receipt.findMany({
+    const invoices = await db.invoice.findMany({
       where: { userId: session.user.id },
       include: {
         _count: {
@@ -40,12 +40,12 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      data: receipts,
+      data: invoices,
     });
   } catch (error) {
-    console.error("Get receipts error:", error);
+    console.error("Get invoices error:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to fetch receipts" },
+      { success: false, error: "Failed to fetch invoices" },
       { status: 500 }
     );
   }
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
-    const validated = createReceiptSchema.safeParse(body);
+    const validated = createInvoiceSchema.safeParse(body);
 
     if (!validated.success) {
       return NextResponse.json(
@@ -88,13 +88,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create receipt with catalogue links
-    const receipt = await db.receipt.create({
+    // Create invoice with catalogue links
+    const invoice = await db.invoice.create({
       data: {
         userId: session.user.id,
         supplierName: validated.data.supplierName,
         originalFileName: "Manual Entry",
-        receiptDate: validated.data.receiptDate ? new Date(validated.data.receiptDate) : null,
+        invoiceDate: validated.data.invoiceDate ? new Date(validated.data.invoiceDate) : null,
         language: "en",
         currency: validated.data.currency,
         status: "COMPLETED",
@@ -118,12 +118,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: receipt,
+      data: invoice,
     });
   } catch (error) {
-    console.error("Create receipt error:", error);
+    console.error("Create invoice error:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to create receipt" },
+      { success: false, error: "Failed to create invoice" },
       { status: 500 }
     );
   }

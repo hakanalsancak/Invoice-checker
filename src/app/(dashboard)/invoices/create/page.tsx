@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Loader2, Check, X } from "lucide-react";
+import { ArrowLeft, Loader2, Check } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -19,7 +19,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 
 const CURRENCIES = [
   { code: "USD", symbol: "$", name: "US Dollar" },
@@ -37,7 +36,7 @@ interface Catalogue {
 
 interface CreateData {
   supplierName: string;
-  receiptDate?: string;
+  invoiceDate?: string;
   currency: string;
   catalogueIds: string[];
 }
@@ -49,8 +48,8 @@ async function fetchCatalogues(): Promise<Catalogue[]> {
   return data.data.filter((c: { status: string }) => c.status === "COMPLETED");
 }
 
-async function createReceipt(data: CreateData) {
-  const response = await fetch("/api/receipts", {
+async function createInvoice(data: CreateData) {
+  const response = await fetch("/api/invoices", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -61,10 +60,10 @@ async function createReceipt(data: CreateData) {
   return result.data;
 }
 
-export default function CreateReceiptPage() {
+export default function CreateInvoicePage() {
   const router = useRouter();
   const [supplierName, setSupplierName] = useState("");
-  const [receiptDate, setReceiptDate] = useState("");
+  const [invoiceDate, setInvoiceDate] = useState("");
   const [currency, setCurrency] = useState("USD");
   const [selectedCatalogues, setSelectedCatalogues] = useState<string[]>([]);
 
@@ -74,13 +73,13 @@ export default function CreateReceiptPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: createReceipt,
+    mutationFn: createInvoice,
     onSuccess: (data) => {
-      toast.success("Receipt created! Now add your items from the catalogue.");
-      router.push(`/receipts/${data.id}`);
+      toast.success("Invoice created! Now add your items from the catalogue.");
+      router.push(`/invoices/${data.id}`);
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to create receipt");
+      toast.error(error.message || "Failed to create invoice");
     },
   });
 
@@ -107,7 +106,7 @@ export default function CreateReceiptPage() {
 
     createMutation.mutate({
       supplierName: supplierName.trim(),
-      receiptDate: receiptDate || undefined,
+      invoiceDate: invoiceDate || undefined,
       currency,
       catalogueIds: selectedCatalogues,
     });
@@ -121,26 +120,26 @@ export default function CreateReceiptPage() {
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Back button */}
       <Button variant="ghost" asChild className="-ml-4">
-        <Link href="/receipts">
+        <Link href="/invoices">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Receipts
+          Back to Invoices
         </Link>
       </Button>
 
       {/* Page header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Create Receipt</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Create Invoice</h1>
         <p className="text-muted-foreground">
-          Create a new receipt to verify prices against your catalogues
+          Create a new invoice to verify prices against your catalogues
         </p>
       </div>
 
       {/* Create form */}
       <Card>
         <CardHeader>
-          <CardTitle>Receipt Details</CardTitle>
+          <CardTitle>Invoice Details</CardTitle>
           <CardDescription>
-            First, select which catalogue(s) this receipt will be compared against.
+            First, select which catalogue(s) this invoice will be compared against.
             Then you&apos;ll be able to add items from those catalogues.
           </CardDescription>
         </CardHeader>
@@ -150,7 +149,7 @@ export default function CreateReceiptPage() {
             <div className="space-y-3">
               <Label>Select Catalogue(s) *</Label>
               <p className="text-sm text-muted-foreground">
-                Choose the catalogue(s) containing the products on this receipt
+                Choose the catalogue(s) containing the products on this invoice
               </p>
               
               {cataloguesLoading ? (
@@ -160,27 +159,30 @@ export default function CreateReceiptPage() {
                 </div>
               ) : catalogues && catalogues.length > 0 ? (
                 <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-3">
-                  {catalogues.map((catalogue) => (
-                    <div
-                      key={catalogue.id}
-                      className={`flex items-center gap-3 p-2 rounded-md cursor-pointer hover:bg-accent transition-colors ${
-                        selectedCatalogues.includes(catalogue.id) ? "bg-accent" : ""
-                      }`}
-                      onClick={() => handleCatalogueToggle(catalogue.id)}
-                    >
-                      <Checkbox
-                        checked={selectedCatalogues.includes(catalogue.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        onCheckedChange={() => handleCatalogueToggle(catalogue.id)}
-                      />
-                      <div className="flex-1">
-                        <p className="font-medium">{catalogue.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {catalogue._count.items} items • {catalogue.currency}
-                        </p>
+                  {catalogues.map((catalogue) => {
+                    const isSelected = selectedCatalogues.includes(catalogue.id);
+                    return (
+                      <div
+                        key={catalogue.id}
+                        className={`flex items-center gap-3 p-2 rounded-md cursor-pointer hover:bg-accent transition-colors ${
+                          isSelected ? "bg-accent" : ""
+                        }`}
+                        onClick={() => handleCatalogueToggle(catalogue.id)}
+                      >
+                        <div className={`size-4 shrink-0 rounded border flex items-center justify-center ${
+                          isSelected ? "bg-primary border-primary" : "border-input"
+                        }`}>
+                          {isSelected && <Check className="size-3 text-primary-foreground" />}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium">{catalogue.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {catalogue._count.items} items • {catalogue.currency}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-6 border rounded-lg">
@@ -219,21 +221,21 @@ export default function CreateReceiptPage() {
               </p>
             </div>
 
-            {/* Receipt date */}
+            {/* Invoice date */}
             <div className="space-y-2">
-              <Label htmlFor="receiptDate">Receipt Date</Label>
+              <Label htmlFor="invoiceDate">Invoice Date</Label>
               <Input
-                id="receiptDate"
+                id="invoiceDate"
                 type="date"
-                value={receiptDate}
-                onChange={(e) => setReceiptDate(e.target.value)}
+                value={invoiceDate}
+                onChange={(e) => setInvoiceDate(e.target.value)}
                 disabled={createMutation.isPending}
               />
             </div>
 
             {/* Currency */}
             <div className="space-y-2">
-              <Label htmlFor="currency">Receipt Currency *</Label>
+              <Label htmlFor="currency">Invoice Currency *</Label>
               <Select
                 value={currency}
                 onValueChange={setCurrency}
@@ -251,7 +253,7 @@ export default function CreateReceiptPage() {
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground">
-                The currency of prices on this receipt
+                The currency of prices on this invoice
               </p>
             </div>
 
@@ -268,13 +270,13 @@ export default function CreateReceiptPage() {
                     Creating...
                   </>
                 ) : (
-                  "Create Receipt"
+                  "Create Invoice"
                 )}
               </Button>
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => router.push("/receipts")}
+                onClick={() => router.push("/invoices")}
                 disabled={createMutation.isPending}
               >
                 Cancel
@@ -291,9 +293,9 @@ export default function CreateReceiptPage() {
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <p>1. <strong>Select catalogue(s)</strong> - Choose which price list(s) to compare against</p>
-          <p>2. <strong>Create receipt</strong> - Enter supplier name and currency</p>
+          <p>2. <strong>Create invoice</strong> - Enter supplier name and currency</p>
           <p>3. <strong>Add items</strong> - Pick products from your selected catalogues</p>
-          <p>4. <strong>Verify</strong> - Compare receipt prices against catalogue prices</p>
+          <p>4. <strong>Verify</strong> - Compare invoice prices against catalogue prices</p>
         </CardContent>
       </Card>
     </div>

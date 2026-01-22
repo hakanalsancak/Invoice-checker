@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { ArrowLeft, FileCheck, Loader2, Pencil, Plus, Save, Trash2, X, Search, ChevronDown } from "lucide-react";
+import { ArrowLeft, FileCheck, Loader2, Pencil, Plus, Save, Trash2, X, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -51,7 +51,7 @@ import {
 } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { PageLoading } from "@/components/shared/LoadingStates";
-import { ReceiptWithItems, ReceiptItemDisplay } from "@/types";
+import { InvoiceWithItems, InvoiceItemDisplay } from "@/types";
 import { formatPrice, getCurrencySymbol } from "@/lib/currency";
 
 const CURRENCIES = [
@@ -77,7 +77,7 @@ interface LinkedCatalogue {
   currency: string;
 }
 
-interface ReceiptWithCatalogues extends ReceiptWithItems {
+interface InvoiceWithCatalogues extends InvoiceWithItems {
   catalogues?: Array<{
     catalogue: LinkedCatalogue;
   }>;
@@ -91,8 +91,8 @@ interface EditingItem {
   totalPrice: string;
 }
 
-async function fetchReceipt(id: string): Promise<ReceiptWithCatalogues> {
-  const response = await fetch(`/api/receipts/${id}`);
+async function fetchInvoice(id: string): Promise<InvoiceWithCatalogues> {
+  const response = await fetch(`/api/invoices/${id}`);
   const data = await response.json();
   if (!data.success) throw new Error(data.error);
   return data.data;
@@ -101,14 +101,14 @@ async function fetchReceipt(id: string): Promise<ReceiptWithCatalogues> {
 async function fetchCatalogueItems(catalogueIds: string[]): Promise<CatalogueItem[]> {
   if (catalogueIds.length === 0) return [];
   
-  const response = await fetch(`/api/receipts/catalogue-items?ids=${catalogueIds.join(",")}`);
+  const response = await fetch(`/api/invoices/catalogue-items?ids=${catalogueIds.join(",")}`);
   const data = await response.json();
   if (!data.success) throw new Error(data.error);
   return data.data;
 }
 
-async function updateReceiptCurrency(receiptId: string, currency: string) {
-  const response = await fetch(`/api/receipts/${receiptId}`, {
+async function updateInvoiceCurrency(invoiceId: string, currency: string) {
+  const response = await fetch(`/api/invoices/${invoiceId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ currency }),
@@ -118,8 +118,8 @@ async function updateReceiptCurrency(receiptId: string, currency: string) {
   return data.data;
 }
 
-async function updateItem(receiptId: string, itemId: string, data: Partial<ReceiptItemDisplay>) {
-  const response = await fetch(`/api/receipts/${receiptId}/items`, {
+async function updateItem(invoiceId: string, itemId: string, data: Partial<InvoiceItemDisplay>) {
+  const response = await fetch(`/api/invoices/${invoiceId}/items`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ itemId, ...data }),
@@ -129,22 +129,22 @@ async function updateItem(receiptId: string, itemId: string, data: Partial<Recei
   return result.data;
 }
 
-async function deleteItem(receiptId: string, itemId: string) {
-  const response = await fetch(`/api/receipts/${receiptId}/items?itemId=${itemId}`, {
+async function deleteItem(invoiceId: string, itemId: string) {
+  const response = await fetch(`/api/invoices/${invoiceId}/items?itemId=${itemId}`, {
     method: "DELETE",
   });
   const result = await response.json();
   if (!result.success) throw new Error(result.error);
 }
 
-async function createItem(receiptId: string, data: { 
+async function createItem(invoiceId: string, data: { 
   catalogueItemId: string;
   productName: string; 
   quantity: number; 
   unitPrice: number; 
   totalPrice: number;
 }) {
-  const response = await fetch(`/api/receipts/${receiptId}/items`, {
+  const response = await fetch(`/api/invoices/${invoiceId}/items`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -154,8 +154,8 @@ async function createItem(receiptId: string, data: {
   return result.data;
 }
 
-async function verifyReceipt(receiptId: string) {
-  const response = await fetch(`/api/receipts/${receiptId}/verify`, {
+async function verifyInvoice(invoiceId: string) {
+  const response = await fetch(`/api/invoices/${invoiceId}/verify`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
   });
@@ -175,12 +175,12 @@ function StatusBadge({ status }: { status: string }) {
   return <Badge variant={variant}>{label}</Badge>;
 }
 
-export default function ReceiptDetailPage() {
+export default function InvoiceDetailPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const receiptId = params.id as string;
+  const invoiceId = params.id as string;
   const showVerify = searchParams.get("verify") === "true";
 
   const [currencyDialogOpen, setCurrencyDialogOpen] = useState(false);
@@ -198,15 +198,15 @@ export default function ReceiptDetailPage() {
     }
   }, [showVerify]);
 
-  const { data: receipt, isLoading, error } = useQuery({
-    queryKey: ["receipt", receiptId],
-    queryFn: () => fetchReceipt(receiptId),
+  const { data: invoice, isLoading, error } = useQuery({
+    queryKey: ["invoice", invoiceId],
+    queryFn: () => fetchInvoice(invoiceId),
   });
 
   // Get linked catalogue IDs
   const linkedCatalogueIds = useMemo(() => {
-    return receipt?.catalogues?.map(c => c.catalogue.id) || [];
-  }, [receipt?.catalogues]);
+    return invoice?.catalogues?.map(c => c.catalogue.id) || [];
+  }, [invoice?.catalogues]);
 
   // Fetch items from linked catalogues
   const { data: catalogueItems } = useQuery({
@@ -216,10 +216,10 @@ export default function ReceiptDetailPage() {
   });
 
   const currencyMutation = useMutation({
-    mutationFn: (currency: string) => updateReceiptCurrency(receiptId, currency),
+    mutationFn: (currency: string) => updateInvoiceCurrency(invoiceId, currency),
     onSuccess: () => {
       toast.success("Currency updated!");
-      queryClient.invalidateQueries({ queryKey: ["receipt", receiptId] });
+      queryClient.invalidateQueries({ queryKey: ["invoice", invoiceId] });
       setCurrencyDialogOpen(false);
     },
     onError: (error: Error) => {
@@ -228,10 +228,10 @@ export default function ReceiptDetailPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ itemId, data }: { itemId: string; data: Partial<ReceiptItemDisplay> }) =>
-      updateItem(receiptId, itemId, data),
+    mutationFn: ({ itemId, data }: { itemId: string; data: Partial<InvoiceItemDisplay> }) =>
+      updateItem(invoiceId, itemId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["receipt", receiptId] });
+      queryClient.invalidateQueries({ queryKey: ["invoice", invoiceId] });
       setEditingItem(null);
       toast.success("Item updated successfully");
     },
@@ -241,9 +241,9 @@ export default function ReceiptDetailPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (itemId: string) => deleteItem(receiptId, itemId),
+    mutationFn: (itemId: string) => deleteItem(invoiceId, itemId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["receipt", receiptId] });
+      queryClient.invalidateQueries({ queryKey: ["invoice", invoiceId] });
       toast.success("Item deleted successfully");
     },
     onError: (error: Error) => {
@@ -253,9 +253,9 @@ export default function ReceiptDetailPage() {
 
   const createMutation = useMutation({
     mutationFn: (data: { catalogueItemId: string; productName: string; quantity: number; unitPrice: number; totalPrice: number }) =>
-      createItem(receiptId, data),
+      createItem(invoiceId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["receipt", receiptId] });
+      queryClient.invalidateQueries({ queryKey: ["invoice", invoiceId] });
       setIsAddingItem(false);
       setSelectedProduct(null);
       setNewItemQuantity("1");
@@ -268,7 +268,7 @@ export default function ReceiptDetailPage() {
   });
 
   const verifyMutation = useMutation({
-    mutationFn: () => verifyReceipt(receiptId),
+    mutationFn: () => verifyInvoice(invoiceId),
     onSuccess: (data) => {
       toast.success("Price verification completed!");
       router.push(`/reports/${data.reportId}`);
@@ -279,7 +279,7 @@ export default function ReceiptDetailPage() {
   });
 
   const openCurrencyDialog = () => {
-    setSelectedCurrency(receipt?.currency || "USD");
+    setSelectedCurrency(invoice?.currency || "USD");
     setCurrencyDialogOpen(true);
   };
 
@@ -291,18 +291,18 @@ export default function ReceiptDetailPage() {
 
   if (isLoading) return <PageLoading />;
 
-  if (error || !receipt) {
+  if (error || !invoice) {
     return (
       <div className="flex flex-col items-center justify-center h-64 space-y-4">
-        <p className="text-muted-foreground">Receipt not found</p>
+        <p className="text-muted-foreground">Invoice not found</p>
         <Button asChild variant="outline">
-          <Link href="/receipts">Back to Receipts</Link>
+          <Link href="/invoices">Back to Invoices</Link>
         </Button>
       </div>
     );
   }
 
-  const handleEditClick = (item: ReceiptItemDisplay) => {
+  const handleEditClick = (item: InvoiceItemDisplay) => {
     setEditingItem({
       id: item.id,
       productName: item.productName,
@@ -329,7 +329,6 @@ export default function ReceiptDetailPage() {
   const handleProductSelect = (product: CatalogueItem) => {
     setSelectedProduct(product);
     setProductPickerOpen(false);
-    // Don't auto-fill price - user enters the receipt price
   };
 
   const handleAddItem = () => {
@@ -338,7 +337,7 @@ export default function ReceiptDetailPage() {
       return;
     }
     if (!newItemPrice) {
-      toast.error("Please enter the receipt price");
+      toast.error("Please enter the invoice price");
       return;
     }
 
@@ -354,7 +353,6 @@ export default function ReceiptDetailPage() {
     });
   };
 
-  // Auto-calculate total when quantity or price changes
   const handleEditFieldChange = (field: keyof EditingItem, value: string) => {
     if (!editingItem) return;
     
@@ -369,15 +367,15 @@ export default function ReceiptDetailPage() {
     setEditingItem(updated);
   };
 
-  const linkedCatalogues = receipt.catalogues?.map(c => c.catalogue) || [];
+  const linkedCatalogues = invoice.catalogues?.map(c => c.catalogue) || [];
 
   return (
     <div className="space-y-6">
       {/* Back button */}
       <Button variant="ghost" asChild className="-ml-4">
-        <Link href="/receipts">
+        <Link href="/invoices">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Receipts
+          Back to Invoices
         </Link>
       </Button>
 
@@ -386,22 +384,22 @@ export default function ReceiptDetailPage() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold tracking-tight">
-              {receipt.supplierName || "Receipt Details"}
+              {invoice.supplierName || "Invoice Details"}
             </h1>
-            <StatusBadge status={receipt.status} />
+            <StatusBadge status={invoice.status} />
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mt-2">
             <span>
-              {receipt.receiptDate
-                ? format(new Date(receipt.receiptDate), "MMMM d, yyyy")
+              {invoice.invoiceDate
+                ? format(new Date(invoice.invoiceDate), "MMMM d, yyyy")
                 : "Date not specified"}
             </span>
             <span>•</span>
-            <span>{receipt.items.length} items</span>
-            {receipt.totalAmount && (
+            <span>{invoice.items.length} items</span>
+            {invoice.totalAmount && (
               <>
                 <span>•</span>
-                <span>Total: {formatPrice(Number(receipt.totalAmount), receipt.currency || "USD")}</span>
+                <span>Total: {formatPrice(Number(invoice.totalAmount), invoice.currency || "USD")}</span>
               </>
             )}
             <span>•</span>
@@ -409,7 +407,7 @@ export default function ReceiptDetailPage() {
               onClick={openCurrencyDialog}
               className="inline-flex items-center gap-1 text-primary hover:underline"
             >
-              Currency: {getCurrencySymbol(receipt.currency || "USD")} {receipt.currency || "USD"}
+              Currency: {getCurrencySymbol(invoice.currency || "USD")} {invoice.currency || "USD"}
               <Pencil className="h-3 w-3" />
             </button>
           </div>
@@ -433,9 +431,9 @@ export default function ReceiptDetailPage() {
             </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Add Receipt Item</DialogTitle>
+                <DialogTitle>Add Invoice Item</DialogTitle>
                 <DialogDescription>
-                  Select a product from your linked catalogues and enter the receipt price
+                  Select a product from your linked catalogues and enter the invoice price
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
@@ -528,18 +526,18 @@ export default function ReceiptDetailPage() {
                   />
                 </div>
 
-                {/* Receipt Price */}
+                {/* Invoice Price */}
                 <div className="space-y-2">
-                  <Label>Receipt Price (per unit) *</Label>
+                  <Label>Invoice Price (per unit) *</Label>
                   <Input
                     type="number"
                     step="0.01"
                     value={newItemPrice}
                     onChange={(e) => setNewItemPrice(e.target.value)}
-                    placeholder="Enter the price from the receipt"
+                    placeholder="Enter the price from the invoice"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Enter the unit price shown on your receipt/invoice
+                    Enter the unit price shown on your invoice
                   </p>
                 </div>
 
@@ -550,7 +548,7 @@ export default function ReceiptDetailPage() {
                     <div className="text-lg font-bold">
                       {formatPrice(
                         (parseFloat(newItemQuantity) || 1) * (parseFloat(newItemPrice) || 0),
-                        receipt.currency || "USD"
+                        invoice.currency || "USD"
                       )}
                     </div>
                   </div>
@@ -578,7 +576,7 @@ export default function ReceiptDetailPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-          {receipt.status === "COMPLETED" && receipt.items.length > 0 && (
+          {invoice.status === "COMPLETED" && invoice.items.length > 0 && (
             <Button onClick={() => verifyMutation.mutate()} disabled={verifyMutation.isPending}>
               {verifyMutation.isPending ? (
                 <>
@@ -599,9 +597,9 @@ export default function ReceiptDetailPage() {
       {/* Items table */}
       <Card>
         <CardHeader>
-          <CardTitle>Receipt Items</CardTitle>
+          <CardTitle>Invoice Items</CardTitle>
           <CardDescription>
-            Items from this receipt - click edit to adjust quantity or price
+            Items from this invoice - click edit to adjust quantity or price
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -618,14 +616,14 @@ export default function ReceiptDetailPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {receipt.items.length === 0 ? (
+                {invoice.items.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                       No items yet. Click &quot;Add Item&quot; to add products from your catalogues.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  receipt.items.map((item, index) => (
+                  invoice.items.map((item, index) => (
                     <TableRow key={item.id}>
                       {editingItem?.id === item.id ? (
                         <>
@@ -650,7 +648,7 @@ export default function ReceiptDetailPage() {
                             />
                           </TableCell>
                           <TableCell className="font-medium">
-                            {formatPrice(parseFloat(editingItem.totalPrice) || 0, receipt.currency || "USD")}
+                            {formatPrice(parseFloat(editingItem.totalPrice) || 0, invoice.currency || "USD")}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
@@ -683,9 +681,9 @@ export default function ReceiptDetailPage() {
                           <TableCell className="text-muted-foreground">{index + 1}</TableCell>
                           <TableCell className="font-medium">{item.productName}</TableCell>
                           <TableCell>{Number(item.quantity)}</TableCell>
-                          <TableCell>{formatPrice(Number(item.unitPrice), receipt.currency || "USD")}</TableCell>
+                          <TableCell>{formatPrice(Number(item.unitPrice), invoice.currency || "USD")}</TableCell>
                           <TableCell className="font-medium">
-                            {formatPrice(Number(item.totalPrice), receipt.currency || "USD")}
+                            {formatPrice(Number(item.totalPrice), invoice.currency || "USD")}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
@@ -718,11 +716,11 @@ export default function ReceiptDetailPage() {
           </div>
           
           {/* Total row */}
-          {receipt.totalAmount && Number(receipt.totalAmount) > 0 && (
+          {invoice.totalAmount && Number(invoice.totalAmount) > 0 && (
             <div className="flex justify-end mt-4 pt-4 border-t">
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">Grand Total</p>
-                <p className="text-2xl font-bold">{formatPrice(Number(receipt.totalAmount), receipt.currency || "USD")}</p>
+                <p className="text-2xl font-bold">{formatPrice(Number(invoice.totalAmount), invoice.currency || "USD")}</p>
               </div>
             </div>
           )}
@@ -735,7 +733,7 @@ export default function ReceiptDetailPage() {
           <DialogHeader>
             <DialogTitle>Change Currency</DialogTitle>
             <DialogDescription>
-              Select the correct currency for this receipt.
+              Select the correct currency for this invoice.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -761,7 +759,7 @@ export default function ReceiptDetailPage() {
             </Button>
             <Button
               onClick={handleCurrencyChange}
-              disabled={currencyMutation.isPending || selectedCurrency === receipt?.currency}
+              disabled={currencyMutation.isPending || selectedCurrency === invoice?.currency}
             >
               {currencyMutation.isPending ? (
                 <>

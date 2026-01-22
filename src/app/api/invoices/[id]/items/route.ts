@@ -21,14 +21,14 @@ const createItemSchema = z.object({
   totalPrice: z.number().min(0, "Total must be non-negative"),
 });
 
-// Add a new item to receipt
+// Add a new item to invoice
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
-    const { id: receiptId } = await params;
+    const { id: invoiceId } = await params;
 
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -38,17 +38,17 @@ export async function POST(
     }
 
     // Verify ownership and get linked catalogues
-    const receipt = await db.receipt.findFirst({
-      where: { id: receiptId, userId: session.user.id },
+    const invoice = await db.invoice.findFirst({
+      where: { id: invoiceId, userId: session.user.id },
       include: { 
         items: { orderBy: { lineNumber: "desc" }, take: 1 },
         catalogues: { select: { catalogueId: true } },
       },
     });
 
-    if (!receipt) {
+    if (!invoice) {
       return NextResponse.json(
-        { success: false, error: "Receipt not found" },
+        { success: false, error: "Invoice not found" },
         { status: 404 }
       );
     }
@@ -64,7 +64,7 @@ export async function POST(
     }
 
     // Verify the catalogue item belongs to a linked catalogue
-    const linkedCatalogueIds = receipt.catalogues.map(c => c.catalogueId);
+    const linkedCatalogueIds = invoice.catalogues.map(c => c.catalogueId);
     const catalogueItem = await db.catalogueItem.findFirst({
       where: {
         id: validated.data.catalogueItemId,
@@ -80,11 +80,11 @@ export async function POST(
     }
 
     // Get next line number
-    const nextLineNumber = (receipt.items[0]?.lineNumber || 0) + 1;
+    const nextLineNumber = (invoice.items[0]?.lineNumber || 0) + 1;
 
-    const item = await db.receiptItem.create({
+    const item = await db.invoiceItem.create({
       data: {
-        receiptId,
+        invoiceId,
         catalogueItemId: validated.data.catalogueItemId,
         productName: validated.data.productName,
         quantity: validated.data.quantity,
@@ -96,14 +96,14 @@ export async function POST(
       },
     });
 
-    // Update receipt total
-    const newTotal = await db.receiptItem.aggregate({
-      where: { receiptId },
+    // Update invoice total
+    const newTotal = await db.invoiceItem.aggregate({
+      where: { invoiceId },
       _sum: { totalPrice: true },
     });
 
-    await db.receipt.update({
-      where: { id: receiptId },
+    await db.invoice.update({
+      where: { id: invoiceId },
       data: { totalAmount: newTotal._sum.totalPrice || 0 },
     });
 
@@ -112,7 +112,7 @@ export async function POST(
       data: item,
     });
   } catch (error) {
-    console.error("Create receipt item error:", error);
+    console.error("Create invoice item error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to create item" },
       { status: 500 }
@@ -127,7 +127,7 @@ export async function PUT(
 ) {
   try {
     const session = await auth();
-    const { id: receiptId } = await params;
+    const { id: invoiceId } = await params;
 
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -137,13 +137,13 @@ export async function PUT(
     }
 
     // Verify ownership
-    const receipt = await db.receipt.findFirst({
-      where: { id: receiptId, userId: session.user.id },
+    const invoice = await db.invoice.findFirst({
+      where: { id: invoiceId, userId: session.user.id },
     });
 
-    if (!receipt) {
+    if (!invoice) {
       return NextResponse.json(
-        { success: false, error: "Receipt not found" },
+        { success: false, error: "Invoice not found" },
         { status: 404 }
       );
     }
@@ -158,9 +158,9 @@ export async function PUT(
       );
     }
 
-    // Verify item belongs to this receipt
-    const existingItem = await db.receiptItem.findFirst({
-      where: { id: validated.data.itemId, receiptId },
+    // Verify item belongs to this invoice
+    const existingItem = await db.invoiceItem.findFirst({
+      where: { id: validated.data.itemId, invoiceId },
     });
 
     if (!existingItem) {
@@ -170,7 +170,7 @@ export async function PUT(
       );
     }
 
-    const item = await db.receiptItem.update({
+    const item = await db.invoiceItem.update({
       where: { id: validated.data.itemId },
       data: {
         productName: validated.data.productName,
@@ -181,14 +181,14 @@ export async function PUT(
       },
     });
 
-    // Update receipt total
-    const newTotal = await db.receiptItem.aggregate({
-      where: { receiptId },
+    // Update invoice total
+    const newTotal = await db.invoiceItem.aggregate({
+      where: { invoiceId },
       _sum: { totalPrice: true },
     });
 
-    await db.receipt.update({
-      where: { id: receiptId },
+    await db.invoice.update({
+      where: { id: invoiceId },
       data: { totalAmount: newTotal._sum.totalPrice || 0 },
     });
 
@@ -197,7 +197,7 @@ export async function PUT(
       data: item,
     });
   } catch (error) {
-    console.error("Update receipt item error:", error);
+    console.error("Update invoice item error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to update item" },
       { status: 500 }
@@ -212,7 +212,7 @@ export async function DELETE(
 ) {
   try {
     const session = await auth();
-    const { id: receiptId } = await params;
+    const { id: invoiceId } = await params;
 
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -232,20 +232,20 @@ export async function DELETE(
     }
 
     // Verify ownership
-    const receipt = await db.receipt.findFirst({
-      where: { id: receiptId, userId: session.user.id },
+    const invoice = await db.invoice.findFirst({
+      where: { id: invoiceId, userId: session.user.id },
     });
 
-    if (!receipt) {
+    if (!invoice) {
       return NextResponse.json(
-        { success: false, error: "Receipt not found" },
+        { success: false, error: "Invoice not found" },
         { status: 404 }
       );
     }
 
-    // Verify item belongs to this receipt
-    const item = await db.receiptItem.findFirst({
-      where: { id: itemId, receiptId },
+    // Verify item belongs to this invoice
+    const item = await db.invoiceItem.findFirst({
+      where: { id: itemId, invoiceId },
     });
 
     if (!item) {
@@ -255,18 +255,18 @@ export async function DELETE(
       );
     }
 
-    await db.receiptItem.delete({
+    await db.invoiceItem.delete({
       where: { id: itemId },
     });
 
-    // Update receipt total
-    const newTotal = await db.receiptItem.aggregate({
-      where: { receiptId },
+    // Update invoice total
+    const newTotal = await db.invoiceItem.aggregate({
+      where: { invoiceId },
       _sum: { totalPrice: true },
     });
 
-    await db.receipt.update({
-      where: { id: receiptId },
+    await db.invoice.update({
+      where: { id: invoiceId },
       data: { totalAmount: newTotal._sum.totalPrice || 0 },
     });
 
@@ -274,7 +274,7 @@ export async function DELETE(
       success: true,
     });
   } catch (error) {
-    console.error("Delete receipt item error:", error);
+    console.error("Delete invoice item error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to delete item" },
       { status: 500 }

@@ -175,7 +175,7 @@ export default function CreateCataloguePage() {
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <p>1. Create the catalogue with a name and currency</p>
           <p>2. Add products manually with their names and prices</p>
-          <p>3. Use this catalogue to verify receipt prices</p>
+          <p>3. Use this catalogue to verify invoice prices</p>
         </CardContent>
       </Card>
     </div>

@@ -9,7 +9,7 @@ export async function POST(
 ) {
   try {
     const session = await auth();
-    const { id: receiptId } = await params;
+    const { id: invoiceId } = await params;
     
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -18,10 +18,10 @@ export async function POST(
       );
     }
 
-    // Get receipt with items and linked catalogues
-    const receipt = await db.receipt.findFirst({
+    // Get invoice with items and linked catalogues
+    const invoice = await db.invoice.findFirst({
       where: {
-        id: receiptId,
+        id: invoiceId,
         userId: session.user.id,
       },
       include: {
@@ -46,35 +46,35 @@ export async function POST(
       },
     });
 
-    if (!receipt) {
+    if (!invoice) {
       return NextResponse.json(
-        { success: false, error: "Receipt not found" },
+        { success: false, error: "Invoice not found" },
         { status: 404 }
       );
     }
 
-    if (receipt.items.length === 0) {
+    if (invoice.items.length === 0) {
       return NextResponse.json(
-        { success: false, error: "Receipt has no items to verify" },
+        { success: false, error: "Invoice has no items to verify" },
         { status: 400 }
       );
     }
 
     // Get the first linked catalogue for the report
-    const linkedCatalogue = receipt.catalogues[0]?.catalogue;
+    const linkedCatalogue = invoice.catalogues[0]?.catalogue;
     if (!linkedCatalogue) {
       return NextResponse.json(
-        { success: false, error: "Receipt is not linked to any catalogue" },
+        { success: false, error: "Invoice is not linked to any catalogue" },
         { status: 400 }
       );
     }
 
-    const receiptCurrency = receipt.currency || "USD";
+    const invoiceCurrency = invoice.currency || "USD";
     const catalogueCurrency = linkedCatalogue.currency || "GBP";
     
     // Get exchange rate if currencies differ
-    const exchangeRate = receiptCurrency !== catalogueCurrency
-      ? await getExchangeRate(receiptCurrency, catalogueCurrency)
+    const exchangeRate = invoiceCurrency !== catalogueCurrency
+      ? await getExchangeRate(invoiceCurrency, catalogueCurrency)
       : 1;
 
     // Calculate comparison for each item
@@ -83,16 +83,16 @@ export async function POST(
     let matchedItems = 0;
     let mismatches = 0;
 
-    const comparisonItems = receipt.items.map(item => {
+    const comparisonItems = invoice.items.map(item => {
       const catalogueItem = item.catalogueItem;
       
       if (!catalogueItem) {
         mismatches++;
         return {
-          receiptItemId: item.id,
+          invoiceItemId: item.id,
           catalogueItemId: null,
-          receiptPrice: Number(item.unitPrice),
-          receiptPriceConverted: null,
+          invoicePrice: Number(item.unitPrice),
+          invoicePriceConverted: null,
           cataloguePrice: null,
           priceDifference: null,
           percentageDiff: null,
@@ -102,11 +102,11 @@ export async function POST(
         };
       }
 
-      const receiptPrice = Number(item.unitPrice);
+      const invoicePrice = Number(item.unitPrice);
       const cataloguePrice = Number(catalogueItem.price);
       
-      // Convert receipt price to catalogue currency
-      const convertedPrice = receiptPrice * exchangeRate;
+      // Convert invoice price to catalogue currency
+      const convertedPrice = invoicePrice * exchangeRate;
       
       // Calculate difference
       const priceDiff = convertedPrice - cataloguePrice;
@@ -130,14 +130,14 @@ export async function POST(
       }
 
       return {
-        receiptItemId: item.id,
+        invoiceItemId: item.id,
         catalogueItemId: catalogueItem.id,
-        receiptPrice,
-        receiptPriceConverted: convertedPrice,
+        invoicePrice,
+        invoicePriceConverted: convertedPrice,
         cataloguePrice,
         priceDifference: priceDiff,
         percentageDiff: percentDiff,
-        exchangeRate: receiptCurrency !== catalogueCurrency ? exchangeRate : null,
+        exchangeRate: invoiceCurrency !== catalogueCurrency ? exchangeRate : null,
         matchConfidence: "EXACT" as const, // Direct link = exact match
         status,
       };
@@ -146,16 +146,16 @@ export async function POST(
     // Create the report
     const report = await db.comparisonReport.create({
       data: {
-        receiptId,
+        invoiceId,
         catalogueId: linkedCatalogue.id,
-        totalItems: receipt.items.length,
+        totalItems: invoice.items.length,
         matchedItems,
         mismatches,
         totalOvercharge,
         totalUndercharge,
-        receiptCurrency,
+        invoiceCurrency,
         catalogueCurrency,
-        exchangeRate: receiptCurrency !== catalogueCurrency ? exchangeRate : null,
+        exchangeRate: invoiceCurrency !== catalogueCurrency ? exchangeRate : null,
         items: {
           create: comparisonItems,
         },
@@ -167,11 +167,11 @@ export async function POST(
       data: { reportId: report.id },
     });
   } catch (error) {
-    console.error("Verify receipt error:", error);
+    console.error("Verify invoice error:", error);
     return NextResponse.json(
       { 
         success: false, 
-        error: error instanceof Error ? error.message : "Failed to verify receipt" 
+        error: error instanceof Error ? error.message : "Failed to verify invoice" 
       },
       { status: 500 }
     );

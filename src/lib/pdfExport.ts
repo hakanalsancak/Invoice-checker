@@ -4,8 +4,8 @@ import autoTable from "jspdf-autotable";
 interface ReportItem {
   productName: string;
   quantity: number;
-  receiptPrice: number;
-  receiptPriceConverted: number | null;
+  invoicePrice: number;
+  invoicePriceConverted: number | null;
   cataloguePrice: number | null;
   priceDifference: number | null;
   percentageDiff: number | null;
@@ -14,9 +14,9 @@ interface ReportItem {
 interface ReportData {
   supplierName: string;
   catalogueName: string;
-  receiptDate: string;
+  invoiceDate: string;
   reportDate: string;
-  receiptCurrency: string;
+  invoiceCurrency: string;
   catalogueCurrency: string;
   exchangeRate: number | null;
   totalItems: number;
@@ -62,9 +62,9 @@ export function exportReportToPDF(report: ReportData): void {
   yPos += 8;
   
   doc.setFont("helvetica", "bold");
-  doc.text("Receipt Date:", 14, yPos);
+  doc.text("Invoice Date:", 14, yPos);
   doc.setFont("helvetica", "normal");
-  doc.text(report.receiptDate, 50, yPos);
+  doc.text(report.invoiceDate, 50, yPos);
   
   doc.setFont("helvetica", "bold");
   doc.text("Report Date:", 110, yPos);
@@ -74,12 +74,12 @@ export function exportReportToPDF(report: ReportData): void {
   yPos += 8;
   
   // Currency conversion info
-  if (report.receiptCurrency !== report.catalogueCurrency && report.exchangeRate) {
+  if (report.invoiceCurrency !== report.catalogueCurrency && report.exchangeRate) {
     doc.setFont("helvetica", "bold");
     doc.text("Currency:", 14, yPos);
     doc.setFont("helvetica", "normal");
     doc.text(
-      `${report.receiptCurrency} → ${report.catalogueCurrency} (Rate: 1 ${report.receiptCurrency} = ${report.exchangeRate.toFixed(4)} ${report.catalogueCurrency})`,
+      `${report.invoiceCurrency} → ${report.catalogueCurrency} (Rate: 1 ${report.invoiceCurrency} = ${report.exchangeRate.toFixed(4)} ${report.catalogueCurrency})`,
       50, yPos
     );
     yPos += 8;
@@ -147,9 +147,9 @@ export function exportReportToPDF(report: ReportData): void {
   
   // Table
   const tableData = report.items.map(item => {
-    const supplierPrice = `${getCurrencySymbol(report.receiptCurrency)}${item.receiptPrice.toFixed(2)}`;
-    const convertedPrice = item.receiptPriceConverted !== null 
-      ? `${getCurrencySymbol(report.catalogueCurrency)}${item.receiptPriceConverted.toFixed(2)}`
+    const supplierPrice = `${getCurrencySymbol(report.invoiceCurrency)}${item.invoicePrice.toFixed(2)}`;
+    const convertedPrice = item.invoicePriceConverted !== null 
+      ? `${getCurrencySymbol(report.catalogueCurrency)}${item.invoicePriceConverted.toFixed(2)}`
       : "-";
     const cataloguePrice = item.cataloguePrice !== null
       ? `${getCurrencySymbol(report.catalogueCurrency)}${item.cataloguePrice.toFixed(2)}`
@@ -177,7 +177,7 @@ export function exportReportToPDF(report: ReportData): void {
     head: [[
       "Product Name",
       "Qty",
-      `Supplier Price\n(${report.receiptCurrency})`,
+      `Supplier Price\n(${report.invoiceCurrency})`,
       `Converted\n(${report.catalogueCurrency})`,
       `Catalogue Price\n(${report.catalogueCurrency})`,
       `Difference\n(${report.catalogueCurrency})`,

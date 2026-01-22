@@ -17,7 +17,7 @@ export async function GET(
       );
     }
 
-    const receipt = await db.receipt.findFirst({
+    const invoice = await db.invoice.findFirst({
       where: {
         id,
         userId: session.user.id,
@@ -52,21 +52,21 @@ export async function GET(
       },
     });
 
-    if (!receipt) {
+    if (!invoice) {
       return NextResponse.json(
-        { success: false, error: "Receipt not found" },
+        { success: false, error: "Invoice not found" },
         { status: 404 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      data: receipt,
+      data: invoice,
     });
   } catch (error) {
-    console.error("Get receipt error:", error);
+    console.error("Get invoice error:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to fetch receipt" },
+      { success: false, error: "Failed to fetch invoice" },
       { status: 500 }
     );
   }
@@ -100,7 +100,7 @@ export async function PATCH(
     }
 
     // Verify ownership
-    const existing = await db.receipt.findFirst({
+    const existing = await db.invoice.findFirst({
       where: {
         id,
         userId: session.user.id,
@@ -109,12 +109,12 @@ export async function PATCH(
 
     if (!existing) {
       return NextResponse.json(
-        { success: false, error: "Receipt not found" },
+        { success: false, error: "Invoice not found" },
         { status: 404 }
       );
     }
 
-    const updated = await db.receipt.update({
+    const updated = await db.invoice.update({
       where: { id },
       data: { currency },
       include: {
@@ -129,9 +129,9 @@ export async function PATCH(
       data: updated,
     });
   } catch (error) {
-    console.error("Update receipt error:", error);
+    console.error("Update invoice error:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to update receipt" },
+      { success: false, error: "Failed to update invoice" },
       { status: 500 }
     );
   }
@@ -153,7 +153,7 @@ export async function DELETE(
     }
 
     // Verify ownership
-    const existing = await db.receipt.findFirst({
+    const existing = await db.invoice.findFirst({
       where: {
         id,
         userId: session.user.id,
@@ -162,12 +162,12 @@ export async function DELETE(
 
     if (!existing) {
       return NextResponse.json(
-        { success: false, error: "Receipt not found" },
+        { success: false, error: "Invoice not found" },
         { status: 404 }
       );
     }
 
-    await db.receipt.delete({
+    await db.invoice.delete({
       where: { id },
     });
 
@@ -175,9 +175,9 @@ export async function DELETE(
       success: true,
     });
   } catch (error) {
-    console.error("Delete receipt error:", error);
+    console.error("Delete invoice error:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to delete receipt" },
+      { success: false, error: "Failed to delete invoice" },
       { status: 500 }
     );
   }
