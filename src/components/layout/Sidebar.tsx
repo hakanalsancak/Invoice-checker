@@ -54,7 +54,7 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
       {/* Logo */}
       <div className="p-6 border-b border-border/50">
         <Link href="/dashboard" className="flex items-center justify-center" onClick={onNavigate}>
-          <img src="/Main logo.png" alt="Check Up Invoice" className="h-14 w-auto object-contain" />
+          <img src="/logo.svg" alt="Check Up Invoice" className="h-14 w-auto object-contain" />
         </Link>
       </div>
 

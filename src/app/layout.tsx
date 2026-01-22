@@ -17,9 +17,9 @@ export const metadata: Metadata = {
   description: "Automatically verify prices on receipts and invoices against your agreed catalogues. Supports Turkish and other languages. Detect overcharges instantly.",
   keywords: ["invoice verification", "price checking", "supplier management", "Turkish", "AI"],
   icons: {
-    icon: "/favicon.png",
-    shortcut: "/favicon.png",
-    apple: "/favicon.png",
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
   },
 };
 

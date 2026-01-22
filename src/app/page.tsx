@@ -29,7 +29,7 @@ export default async function HomePage() {
         {/* Navigation */}
         <nav className="relative z-10 flex items-center justify-between px-6 py-4 lg:px-12">
           <div className="flex items-center gap-3">
-            <img src="/Main logo.png" alt="Check Up Invoice" className="h-12 w-auto object-contain" />
+            <img src="/logo-light.svg" alt="Check Up Invoice" className="h-12 w-auto object-contain" />
           </div>
           <div className="flex items-center gap-4">
             <Button variant="ghost" asChild className="text-white hover:text-white hover:bg-white/10">
@@ -237,7 +237,7 @@ export default async function HomePage() {
       <footer className="bg-slate-950 border-t border-white/10 py-8">
         <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <img src="/Main logo.png" alt="Check Up Invoice" className="h-10 w-auto object-contain" />
+            <img src="/logo-light.svg" alt="Check Up Invoice" className="h-10 w-auto object-contain" />
           </div>
           <p className="text-sm text-white/50">
             © {new Date().getFullYear()} Check Up Invoice. All rights reserved.

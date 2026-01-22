@@ -55,7 +55,7 @@ export default function LoginPage() {
     <Card className="border-0 shadow-2xl bg-card/95 backdrop-blur">
       <CardHeader className="space-y-1 text-center">
         <div className="flex justify-center mb-4">
-          <img src="/Main logo.png" alt="Check Up Invoice" className="h-16 w-auto object-contain" />
+          <img src="/logo-centered.svg" alt="Check Up Invoice" className="h-24 w-auto object-contain" />
         </div>
         <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
         <CardDescription>

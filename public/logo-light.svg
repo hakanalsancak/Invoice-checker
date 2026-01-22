@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 75" fill="none">
+  <defs>
+    <linearGradient id="docGradientLight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+    <linearGradient id="checkGradientLight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+    <linearGradient id="shieldGradientLight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="50%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Icon: Shield with document and checkmark -->
+  <g transform="translate(4, 5)">
+    <!-- Shield base -->
+    <path d="M30 0C30 0 12 4 2 8C2 8 0 35 8 48C16 61 30 65 30 65C30 65 44 61 52 48C60 35 58 8 58 8C48 4 30 0 30 0Z" fill="url(#shieldGradientLight)"/>
+    
+    <!-- Inner shield highlight -->
+    <path d="M30 6C30 6 16 9 8 12C8 12 6.5 34 13 45C19.5 56 30 59 30 59C30 59 40.5 56 47 45C53.5 34 52 12 52 12C44 9 30 6 30 6Z" fill="white" opacity="0.15"/>
+    
+    <!-- Document icon inside shield -->
+    <rect x="18" y="16" width="24" height="30" rx="2" fill="white" opacity="0.95"/>
+    
+    <!-- Document lines -->
+    <rect x="22" y="22" width="12" height="2" rx="1" fill="#3b82f6" opacity="0.4"/>
+    <rect x="22" y="27" width="16" height="2" rx="1" fill="#3b82f6" opacity="0.4"/>
+    <rect x="22" y="32" width="10" height="2" rx="1" fill="#3b82f6" opacity="0.4"/>
+    
+    <!-- Checkmark circle -->
+    <circle cx="36" cy="40" r="9" fill="url(#checkGradientLight)"/>
+    
+    <!-- Checkmark -->
+    <path d="M32 40L35 43L41 36" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+  
+  <!-- Text: Check Up -->
+  <text x="75" y="35" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="26" font-weight="700" fill="white">
+    Check Up
+  </text>
+  
+  <!-- Accent line -->
+  <rect x="75" y="40" width="45" height="3" rx="1.5" fill="url(#checkGradientLight)"/>
+  
+  <!-- Text: Invoice - moved down by 5px -->
+  <text x="75" y="63" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="20" font-weight="500" fill="#94a3b8">
+    Invoice
+  </text>
+</svg>

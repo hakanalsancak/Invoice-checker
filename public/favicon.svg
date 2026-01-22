@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="50%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#1e40af"/>
+    </linearGradient>
+    <linearGradient id="checkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="256" fill="#1e293b"/>
+  
+  <!-- Shield - smaller and centered -->
+  <g transform="translate(256, 256) scale(0.7) translate(-256, -256)">
+    <!-- Shield base -->
+    <path d="M256 76C256 76 156 96 96 116C96 116 76 256 136 346C196 436 256 466 256 466C256 466 316 436 376 346C436 256 416 116 416 116C336 96 256 76 256 76Z" fill="url(#shieldGrad)"/>
+    
+    <!-- Inner shield glow -->
+    <path d="M256 116C256 116 176 132 136 148C136 148 120 256 168 326C216 396 256 418 256 418C256 418 296 396 344 326C392 256 376 148 376 148C316 132 256 116 256 116Z" fill="white" opacity="0.15"/>
+    
+    <!-- Document -->
+    <rect x="186" y="156" width="140" height="180" rx="10" fill="white" opacity="0.95"/>
+    
+    <!-- Document fold corner -->
+    <path d="M286 156L326 196L286 196Z" fill="#e2e8f0"/>
+    
+    <!-- Document lines -->
+    <rect x="206" y="196" width="70" height="10" rx="5" fill="#3b82f6" opacity="0.35"/>
+    <rect x="206" y="218" width="100" height="10" rx="5" fill="#3b82f6" opacity="0.35"/>
+    <rect x="206" y="240" width="55" height="10" rx="5" fill="#3b82f6" opacity="0.35"/>
+    
+    <!-- Checkmark circle -->
+    <circle cx="276" cy="296" r="50" fill="url(#checkGrad)"/>
+    
+    <!-- Checkmark -->
+    <path d="M252 296L268 312L304 268" stroke="white" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+</svg>
