@@ -19,13 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-
-const CURRENCIES = [
-  { code: "USD", symbol: "$", name: "US Dollar" },
-  { code: "GBP", symbol: "£", name: "British Pound" },
-  { code: "EUR", symbol: "€", name: "Euro" },
-  { code: "TRY", symbol: "₺", name: "Turkish Lira" },
-];
+import { SUPPORTED_CURRENCIES } from "@/lib/currency";
 
 interface Catalogue {
   id: string;
@@ -244,8 +238,8 @@ export default function CreateInvoicePage() {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  {CURRENCIES.map((c) => (
+                <SelectContent className="max-h-60">
+                  {SUPPORTED_CURRENCIES.map((c) => (
                     <SelectItem key={c.code} value={c.code}>
                       {c.symbol} {c.code} - {c.name}
                     </SelectItem>

@@ -52,14 +52,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { PageLoading } from "@/components/shared/LoadingStates";
 import { InvoiceWithItems, InvoiceItemDisplay } from "@/types";
-import { formatPrice, getCurrencySymbol } from "@/lib/currency";
-
-const CURRENCIES = [
-  { code: "USD", symbol: "$", name: "US Dollar" },
-  { code: "GBP", symbol: "£", name: "British Pound" },
-  { code: "EUR", symbol: "€", name: "Euro" },
-  { code: "TRY", symbol: "₺", name: "Turkish Lira" },
-];
+import { formatPrice, getCurrencySymbol, SUPPORTED_CURRENCIES } from "@/lib/currency";
 
 interface CatalogueItem {
   id: string;
@@ -743,8 +736,8 @@ export default function InvoiceDetailPage() {
                 <SelectTrigger>
                   <SelectValue placeholder="Select currency..." />
                 </SelectTrigger>
-                <SelectContent>
-                  {CURRENCIES.map((currency) => (
+                <SelectContent className="max-h-60">
+                  {SUPPORTED_CURRENCIES.map((currency) => (
                     <SelectItem key={currency.code} value={currency.code}>
                       {currency.symbol} {currency.code} - {currency.name}
                     </SelectItem>

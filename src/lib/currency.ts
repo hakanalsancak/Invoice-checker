@@ -1,18 +1,36 @@
 // Currency formatting and conversion utility with LIVE exchange rates
 
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  GBP: "£",
-  USD: "$",
-  EUR: "€",
-  TRY: "₺",
-};
+// 20+ most popular world currencies
+export const SUPPORTED_CURRENCIES = [
+  { code: "USD", symbol: "$", name: "US Dollar", locale: "en-US" },
+  { code: "EUR", symbol: "€", name: "Euro", locale: "de-DE" },
+  { code: "GBP", symbol: "£", name: "British Pound", locale: "en-GB" },
+  { code: "JPY", symbol: "¥", name: "Japanese Yen", locale: "ja-JP" },
+  { code: "CHF", symbol: "CHF", name: "Swiss Franc", locale: "de-CH" },
+  { code: "CAD", symbol: "C$", name: "Canadian Dollar", locale: "en-CA" },
+  { code: "AUD", symbol: "A$", name: "Australian Dollar", locale: "en-AU" },
+  { code: "CNY", symbol: "¥", name: "Chinese Yuan", locale: "zh-CN" },
+  { code: "INR", symbol: "₹", name: "Indian Rupee", locale: "en-IN" },
+  { code: "MXN", symbol: "MX$", name: "Mexican Peso", locale: "es-MX" },
+  { code: "BRL", symbol: "R$", name: "Brazilian Real", locale: "pt-BR" },
+  { code: "KRW", symbol: "₩", name: "South Korean Won", locale: "ko-KR" },
+  { code: "SGD", symbol: "S$", name: "Singapore Dollar", locale: "en-SG" },
+  { code: "HKD", symbol: "HK$", name: "Hong Kong Dollar", locale: "zh-HK" },
+  { code: "NOK", symbol: "kr", name: "Norwegian Krone", locale: "nb-NO" },
+  { code: "SEK", symbol: "kr", name: "Swedish Krona", locale: "sv-SE" },
+  { code: "DKK", symbol: "kr", name: "Danish Krone", locale: "da-DK" },
+  { code: "NZD", symbol: "NZ$", name: "New Zealand Dollar", locale: "en-NZ" },
+  { code: "ZAR", symbol: "R", name: "South African Rand", locale: "en-ZA" },
+  { code: "RUB", symbol: "₽", name: "Russian Ruble", locale: "ru-RU" },
+  { code: "TRY", symbol: "₺", name: "Turkish Lira", locale: "tr-TR" },
+  { code: "PLN", symbol: "zł", name: "Polish Zloty", locale: "pl-PL" },
+  { code: "THB", symbol: "฿", name: "Thai Baht", locale: "th-TH" },
+  { code: "AED", symbol: "د.إ", name: "UAE Dirham", locale: "ar-AE" },
+  { code: "SAR", symbol: "﷼", name: "Saudi Riyal", locale: "ar-SA" },
+] as const;
 
-const CURRENCY_LOCALES: Record<string, string> = {
-  GBP: "en-GB",
-  USD: "en-US",
-  EUR: "de-DE",
-  TRY: "tr-TR",
-};
+// Build lookup maps for quick access
+const CURRENCY_MAP = new Map(SUPPORTED_CURRENCIES.map(c => [c.code, c]));
 
 // Cache for exchange rates (to avoid too many API calls)
 let ratesCache: {
@@ -23,19 +41,40 @@ let ratesCache: {
 
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour in milliseconds
 
-// Fallback rates in case API fails (Jan 2026)
-const FALLBACK_RATES_TO_GBP: Record<string, number> = {
-  GBP: 1.0,
-  USD: 0.745,
-  EUR: 0.84,
-  TRY: 0.021,
+// Fallback rates to USD in case API fails (approximate Jan 2026)
+const FALLBACK_RATES_FROM_USD: Record<string, number> = {
+  USD: 1.0,
+  EUR: 0.92,
+  GBP: 0.79,
+  JPY: 148.5,
+  CHF: 0.88,
+  CAD: 1.36,
+  AUD: 1.54,
+  CNY: 7.25,
+  INR: 83.5,
+  MXN: 17.2,
+  BRL: 4.95,
+  KRW: 1320,
+  SGD: 1.34,
+  HKD: 7.82,
+  NOK: 10.5,
+  SEK: 10.3,
+  DKK: 6.85,
+  NZD: 1.62,
+  ZAR: 18.7,
+  RUB: 92.5,
+  TRY: 32.5,
+  PLN: 4.02,
+  THB: 35.2,
+  AED: 3.67,
+  SAR: 3.75,
 };
 
 /**
  * Fetch live exchange rates from API
  * Uses exchangerate-api.com (free, no API key required for basic usage)
  */
-async function fetchLiveRates(baseCurrency: string = "GBP"): Promise<Record<string, number>> {
+async function fetchLiveRates(baseCurrency: string = "USD"): Promise<Record<string, number>> {
   try {
     // Check cache first
     if (ratesCache && 
@@ -66,39 +105,61 @@ async function fetchLiveRates(baseCurrency: string = "GBP"): Promise<Record<stri
     return data.rates;
   } catch (error) {
     console.error("[Currency] Failed to fetch live rates, using fallback:", error);
-    // Return fallback rates converted from GBP base
-    if (baseCurrency === "GBP") {
-      return {
-        GBP: 1,
-        USD: 1 / FALLBACK_RATES_TO_GBP.USD,
-        EUR: 1 / FALLBACK_RATES_TO_GBP.EUR,
-        TRY: 1 / FALLBACK_RATES_TO_GBP.TRY,
-      };
+    
+    // Convert fallback rates to requested base
+    if (baseCurrency === "USD") {
+      return { ...FALLBACK_RATES_FROM_USD };
     }
-    // For other bases, just return 1:1 as fallback
-    return { [baseCurrency]: 1, GBP: FALLBACK_RATES_TO_GBP[baseCurrency] || 1 };
+    
+    // Convert from USD-based fallback to requested base
+    const baseRateFromUsd = FALLBACK_RATES_FROM_USD[baseCurrency] || 1;
+    const convertedRates: Record<string, number> = {};
+    
+    for (const [currency, rateFromUsd] of Object.entries(FALLBACK_RATES_FROM_USD)) {
+      convertedRates[currency] = rateFromUsd / baseRateFromUsd;
+    }
+    
+    return convertedRates;
   }
 }
 
 export function getCurrencySymbol(currencyCode: string): string {
-  return CURRENCY_SYMBOLS[currencyCode?.toUpperCase()] || currencyCode || "£";
+  const currency = CURRENCY_MAP.get(currencyCode?.toUpperCase());
+  return currency?.symbol || currencyCode || "$";
 }
 
-export function formatPrice(price: number | string, currencyCode: string = "GBP"): string {
+export function getCurrencyInfo(currencyCode: string) {
+  return CURRENCY_MAP.get(currencyCode?.toUpperCase());
+}
+
+export function formatPrice(price: number | string, currencyCode: string = "USD"): string {
   const numPrice = typeof price === "string" ? parseFloat(price) : price;
   if (isNaN(numPrice)) return `${getCurrencySymbol(currencyCode)}0.00`;
-  const symbol = getCurrencySymbol(currencyCode);
+  
+  const currency = CURRENCY_MAP.get(currencyCode?.toUpperCase());
+  const symbol = currency?.symbol || currencyCode;
+  
+  // For currencies like JPY that don't use decimals
+  if (currencyCode === "JPY" || currencyCode === "KRW") {
+    return `${symbol}${Math.round(numPrice).toLocaleString()}`;
+  }
+  
   return `${symbol}${numPrice.toFixed(2)}`;
 }
 
-export function formatPriceLocale(price: number | string, currencyCode: string = "GBP"): string {
+export function formatPriceLocale(price: number | string, currencyCode: string = "USD"): string {
   const numPrice = typeof price === "string" ? parseFloat(price) : price;
-  const locale = CURRENCY_LOCALES[currencyCode?.toUpperCase()] || "en-GB";
+  const currency = CURRENCY_MAP.get(currencyCode?.toUpperCase());
+  const locale = currency?.locale || "en-US";
   
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: currencyCode?.toUpperCase() || "GBP",
-  }).format(numPrice);
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: currencyCode?.toUpperCase() || "USD",
+    }).format(numPrice);
+  } catch {
+    return formatPrice(numPrice, currencyCode);
+  }
 }
 
 /**
@@ -109,7 +170,7 @@ export function formatPriceLocale(price: number | string, currencyCode: string =
  */
 export async function getExchangeRate(fromCurrency: string, toCurrency: string): Promise<number> {
   const from = fromCurrency?.toUpperCase() || "USD";
-  const to = toCurrency?.toUpperCase() || "GBP";
+  const to = toCurrency?.toUpperCase() || "USD";
   
   if (from === to) return 1.0;
   
@@ -127,19 +188,19 @@ export async function getExchangeRate(fromCurrency: string, toCurrency: string):
     throw new Error(`Rate not found for ${from} to ${to}`);
   } catch (error) {
     console.error("[Currency] Using fallback rate:", error);
-    // Use fallback calculation
-    const fromToGbp = FALLBACK_RATES_TO_GBP[from] || 1;
-    const toToGbp = FALLBACK_RATES_TO_GBP[to] || 1;
-    return fromToGbp / toToGbp;
+    // Use fallback calculation via USD
+    const fromRateFromUsd = FALLBACK_RATES_FROM_USD[from] || 1;
+    const toRateFromUsd = FALLBACK_RATES_FROM_USD[to] || 1;
+    return toRateFromUsd / fromRateFromUsd;
   }
 }
 
 /**
- * Synchronous version using fallback rates (for client-side use)
+ * Synchronous version using fallback/cached rates (for client-side use)
  */
 export function getExchangeRateSync(fromCurrency: string, toCurrency: string): number {
   const from = fromCurrency?.toUpperCase() || "USD";
-  const to = toCurrency?.toUpperCase() || "GBP";
+  const to = toCurrency?.toUpperCase() || "USD";
   
   if (from === to) return 1.0;
   
@@ -148,10 +209,10 @@ export function getExchangeRateSync(fromCurrency: string, toCurrency: string): n
     return ratesCache.rates[to];
   }
   
-  // Fallback calculation
-  const fromToGbp = FALLBACK_RATES_TO_GBP[from] || 1;
-  const toToGbp = FALLBACK_RATES_TO_GBP[to] || 1;
-  return fromToGbp / toToGbp;
+  // Fallback calculation via USD
+  const fromRateFromUsd = FALLBACK_RATES_FROM_USD[from] || 1;
+  const toRateFromUsd = FALLBACK_RATES_FROM_USD[to] || 1;
+  return toRateFromUsd / fromRateFromUsd;
 }
 
 /**

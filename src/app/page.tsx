@@ -117,7 +117,7 @@ export default async function HomePage() {
           {[
             { value: "99.9%", label: "Accuracy Rate", icon: CheckCircle },
             { value: "< 1min", label: "Per Invoice Check", icon: Clock },
-            { value: "50+", label: "Currencies Supported", icon: DollarSign },
+            { value: "20+", label: "Currencies Supported", icon: DollarSign },
             { value: "24/7", label: "Access Anytime", icon: TrendingUp },
           ].map((stat, i) => (
             <div 
