@@ -55,7 +55,7 @@ export default async function HomePage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative z-10 max-w-6xl mx-auto px-6 pt-20 pb-32 lg:pt-28 lg:pb-40">
+      <section className="relative z-10 max-w-6xl mx-auto px-6 pt-8 pb-24 lg:pt-12 lg:pb-32">
         <div className="text-center">
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.07] border border-white/[0.1] text-sm text-white/70 mb-8 animate-fade-in-up">

@@ -68,13 +68,13 @@ export default function RegisterPage() {
   }
 
   return (
-    <Card className="border-0 shadow-2xl bg-card/95 backdrop-blur">
+    <Card className="border border-white/10 shadow-2xl bg-white/[0.03] backdrop-blur-xl">
       <CardHeader className="space-y-1 text-center">
         <div className="flex justify-center mb-4">
           <img src="/logo-centered.svg" alt="Check Up Invoice" className="h-24 w-auto object-contain" />
         </div>
-        <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
-        <CardDescription>
+        <CardTitle className="text-2xl font-bold text-white">Create an account</CardTitle>
+        <CardDescription className="text-white/60">
           Get started with Check Up Invoice
         </CardDescription>
       </CardHeader>
@@ -86,12 +86,13 @@ export default function RegisterPage() {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Full Name</FormLabel>
+                  <FormLabel className="text-white/80">Full Name</FormLabel>
                   <FormControl>
                     <Input
                       placeholder="John Doe"
                       autoComplete="name"
                       disabled={isLoading}
+                      className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
                       {...field}
                     />
                   </FormControl>
@@ -104,13 +105,14 @@ export default function RegisterPage() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel className="text-white/80">Email</FormLabel>
                   <FormControl>
                     <Input
                       placeholder="name@example.com"
                       type="email"
                       autoComplete="email"
                       disabled={isLoading}
+                      className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
                       {...field}
                     />
                   </FormControl>
@@ -123,13 +125,14 @@ export default function RegisterPage() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel className="text-white/80">Password</FormLabel>
                   <FormControl>
                     <Input
                       placeholder="••••••••"
                       type="password"
                       autoComplete="new-password"
                       disabled={isLoading}
+                      className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
                       {...field}
                     />
                   </FormControl>
@@ -142,13 +145,14 @@ export default function RegisterPage() {
               name="confirmPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Confirm Password</FormLabel>
+                  <FormLabel className="text-white/80">Confirm Password</FormLabel>
                   <FormControl>
                     <Input
                       placeholder="••••••••"
                       type="password"
                       autoComplete="new-password"
                       disabled={isLoading}
+                      className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
                       {...field}
                     />
                   </FormControl>
@@ -171,9 +175,9 @@ export default function RegisterPage() {
         </Form>
       </CardContent>
       <CardFooter className="flex flex-col space-y-4">
-        <div className="text-sm text-muted-foreground text-center">
+        <div className="text-sm text-white/50 text-center">
           Already have an account?{" "}
-          <Link href="/login" className="text-primary hover:underline font-medium">
+          <Link href="/login" className="text-blue-400 hover:underline font-medium">
             Sign in
           </Link>
         </div>

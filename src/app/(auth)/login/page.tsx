@@ -52,13 +52,13 @@ export default function LoginPage() {
   }
 
   return (
-    <Card className="border-0 shadow-2xl bg-card/95 backdrop-blur">
+    <Card className="border border-white/10 shadow-2xl bg-white/[0.03] backdrop-blur-xl">
       <CardHeader className="space-y-1 text-center">
         <div className="flex justify-center mb-4">
           <img src="/logo-centered.svg" alt="Check Up Invoice" className="h-24 w-auto object-contain" />
         </div>
-        <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
-        <CardDescription>
+        <CardTitle className="text-2xl font-bold text-white">Welcome back</CardTitle>
+        <CardDescription className="text-white/60">
           Sign in to your account to continue
         </CardDescription>
       </CardHeader>
@@ -70,13 +70,14 @@ export default function LoginPage() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel className="text-white/80">Email</FormLabel>
                   <FormControl>
                     <Input
                       placeholder="name@example.com"
                       type="email"
                       autoComplete="email"
                       disabled={isLoading}
+                      className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
                       {...field}
                     />
                   </FormControl>
@@ -89,13 +90,14 @@ export default function LoginPage() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel className="text-white/80">Password</FormLabel>
                   <FormControl>
                     <Input
                       placeholder="••••••••"
                       type="password"
                       autoComplete="current-password"
                       disabled={isLoading}
+                      className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
                       {...field}
                     />
                   </FormControl>
@@ -118,9 +120,9 @@ export default function LoginPage() {
         </Form>
       </CardContent>
       <CardFooter className="flex flex-col space-y-4">
-        <div className="text-sm text-muted-foreground text-center">
+        <div className="text-sm text-white/50 text-center">
           Don&apos;t have an account?{" "}
-          <Link href="/register" className="text-primary hover:underline font-medium">
+          <Link href="/register" className="text-blue-400 hover:underline font-medium">
             Sign up
           </Link>
         </div>
