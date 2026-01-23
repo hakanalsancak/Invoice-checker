@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Plus, FileText, MoreHorizontal, Trash2, Eye, FileCheck, Loader2 } from "lucide-react";
+import { Plus, FileText, MoreHorizontal, Trash2, Eye, FileCheck, Loader2, Upload } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -125,12 +125,20 @@ export default function InvoicesPage() {
             Manage and verify your invoices
           </p>
         </div>
-        <Button asChild>
-          <Link href="/invoices/create">
-            <Plus className="mr-2 h-4 w-4" />
-            Create Invoice
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/invoices/upload">
+              <Upload className="mr-2 h-4 w-4" />
+              Import from File
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/invoices/create">
+              <Plus className="mr-2 h-4 w-4" />
+              Create Invoice
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Invoices list */}
@@ -144,12 +152,20 @@ export default function InvoicesPage() {
             <p className="text-muted-foreground text-center mb-4">
               Create your first invoice to start verifying prices
             </p>
-            <Button asChild>
-              <Link href="/invoices/create">
-                <Plus className="mr-2 h-4 w-4" />
-                Create Invoice
-              </Link>
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" asChild>
+                <Link href="/invoices/upload">
+                  <Upload className="mr-2 h-4 w-4" />
+                  Import from File
+                </Link>
+              </Button>
+              <Button asChild>
+                <Link href="/invoices/create">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Invoice
+                </Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : (

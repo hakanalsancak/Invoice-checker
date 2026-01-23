@@ -292,6 +292,22 @@ export default function CreateInvoicePage() {
           <p>4. <strong>Verify</strong> - Compare invoice prices against catalogue prices</p>
         </CardContent>
       </Card>
+
+      {/* Alternative: Import */}
+      <Card className="border-dashed">
+        <CardContent className="pt-6">
+          <div className="text-center">
+            <p className="text-muted-foreground mb-3">
+              Have an invoice spreadsheet? Import it with smart matching!
+            </p>
+            <Button variant="outline" asChild>
+              <Link href="/invoices/upload">
+                Import from Excel/CSV instead
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
