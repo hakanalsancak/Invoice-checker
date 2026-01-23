@@ -172,6 +172,22 @@ export default function CreateCataloguePage() {
           <p>3. Use this catalogue to verify invoice prices</p>
         </CardContent>
       </Card>
+
+      {/* Alternative: Import */}
+      <Card className="border-dashed">
+        <CardContent className="pt-6">
+          <div className="text-center">
+            <p className="text-muted-foreground mb-3">
+              Have a spreadsheet with your products?
+            </p>
+            <Button variant="outline" asChild>
+              <Link href="/catalogues/upload">
+                Import from Excel/CSV instead
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

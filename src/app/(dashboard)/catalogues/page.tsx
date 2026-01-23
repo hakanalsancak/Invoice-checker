@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { Plus, FileText, MoreHorizontal, Trash2, Eye, Loader2 } from "lucide-react";
+import { Plus, FileText, MoreHorizontal, Trash2, Eye, Loader2, Upload } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -123,12 +123,20 @@ export default function CataloguesPage() {
             Manage your supplier price catalogues
           </p>
         </div>
-        <Button asChild>
-          <Link href="/catalogues/create">
-            <Plus className="mr-2 h-4 w-4" />
-            Create Catalogue
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/catalogues/upload">
+              <Upload className="mr-2 h-4 w-4" />
+              Import from File
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/catalogues/create">
+              <Plus className="mr-2 h-4 w-4" />
+              Create Catalogue
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Catalogues list */}
@@ -142,12 +150,20 @@ export default function CataloguesPage() {
             <p className="text-muted-foreground text-center mb-4">
               Create your first price catalogue to get started
             </p>
-            <Button asChild>
-              <Link href="/catalogues/create">
-                <Plus className="mr-2 h-4 w-4" />
-                Create Catalogue
-              </Link>
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" asChild>
+                <Link href="/catalogues/upload">
+                  <Upload className="mr-2 h-4 w-4" />
+                  Import from File
+                </Link>
+              </Button>
+              <Button asChild>
+                <Link href="/catalogues/create">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Catalogue
+                </Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : (
